@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon hashes
+Icon?
+
+# Thumbnails
+._*
+
+# Files that might appear in the same directory of macOS
+.DocumentRevisions-V100
+.Spotlight-V100
+.Trashes
+VolumeConfiguration.plist
+.VolumeIcon.icns
+.fseventsd
+
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Built Apps (Executable binaries should be built from source code, not committed)
+*.app/
+
+# Local env files
+.env
+.env.local
