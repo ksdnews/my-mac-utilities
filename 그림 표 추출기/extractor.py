@@ -47,8 +47,8 @@ def extract_docx(file_path, temp_dir):
         
     return images, tables
 
-def extract_pdf(file_path, temp_dir):
-    """Extracts images and tables from a .pdf file"""
+def extract_pdf_fallback(file_path, temp_dir):
+    """Fallback method to extract images and tables from a .pdf file using pdfplumber and pypdf"""
     images = []
     tables = []
     
@@ -103,6 +103,204 @@ def extract_pdf(file_path, temp_dir):
         except Exception as e2:
             print(f"[Warning] Fallback PDF image extraction failed: {e2}")
 
+    return images, tables
+
+def extract_pdf(file_path, temp_dir):
+    """Extracts images and tables from a .pdf file using PyMuPDF (fitz) with smart filtering and page rendering"""
+    try:
+        import fitz
+    except ImportError:
+        print("[Warning] fitz (PyMuPDF) is not installed. Falling back to pdfplumber/pypdf.")
+        return extract_pdf_fallback(file_path, temp_dir)
+        
+    images = []
+    tables = []
+    
+    try:
+        doc = fitz.open(file_path)
+        
+        for page_idx, page in enumerate(doc):
+            # --- 1. 표(Table) 추출 ---
+            try:
+                tables_finder = page.find_tables()
+                if tables_finder and tables_finder.tables:
+                    for t in tables_finder.tables:
+                        # 격자 좌표 리스트 구성
+                        x_set = set()
+                        y_set = set()
+                        for cell in t.cells:
+                            if cell is not None:
+                                x_set.add(cell[0])
+                                x_set.add(cell[2])
+                                y_set.add(cell[1])
+                                y_set.add(cell[3])
+                        
+                        x_coords = sorted(list(x_set))
+                        y_coords = sorted(list(y_set))
+                        
+                        raw_matrix = t.extract()
+                        
+                        # 격자 인덱스를 구하는 보조 함수
+                        def get_coord_index(val, coord_list):
+                            closest_idx = 0
+                            min_diff = float('inf')
+                            for idx, c_val in enumerate(coord_list):
+                                diff = abs(c_val - val)
+                                if diff < min_diff:
+                                    min_diff = diff
+                                    closest_idx = idx
+                            return closest_idx
+                            
+                        cells_info = []
+                        for cell in t.cells:
+                            if cell is None:
+                                continue
+                            x0, y0, x1, y1 = cell
+                            c_start = get_coord_index(x0, x_coords)
+                            c_end = get_coord_index(x1, x_coords)
+                            r_start = get_coord_index(y0, y_coords)
+                            r_end = get_coord_index(y1, y_coords)
+                            
+                            cell_text = ""
+                            if r_start < len(raw_matrix) and c_start < len(raw_matrix[r_start]):
+                                cell_text = raw_matrix[r_start][c_start]
+                                if cell_text is None:
+                                    cell_text = ""
+                                    
+                            cells_info.append({
+                                'r_start': r_start,
+                                'r_end': r_end,
+                                'c_start': c_start,
+                                'c_end': c_end,
+                                'text': cell_text
+                            })
+                            
+                        # 병합 정보를 포함한 딕셔너리로 저장
+                        tables.append({
+                            'type': 'merged_table',
+                            'row_count': t.row_count,
+                            'col_count': t.col_count,
+                            'cells': cells_info
+                        })
+            except Exception as te:
+                print(f"[Warning] Failed to extract tables from page {page_idx+1} using PyMuPDF: {te}")
+            
+            # --- 2. 그림(Image) 추출 ---
+            text = page.get_text().strip()
+            image_list = page.get_images(full=True)
+            
+            # 텍스트가 적고(150자 미만) 이미지가 있는 전면 그래픽/포스터 페이지는 표 모양의 상자를 제외하고 알맹이 그림만 추출
+            if len(text) < 150 and len(image_list) > 0:
+                try:
+                    union_rect = None
+                    for img_info in image_list:
+                        xref = img_info[0]
+                        rects = page.get_image_rects(xref)
+                        for r in rects:
+                            if r.x1 - r.x0 >= 20 and r.y1 - r.y0 >= 20:
+                                if union_rect is None:
+                                    union_rect = fitz.Rect(r)
+                                else:
+                                    union_rect = union_rect | r
+                    
+                    # 큰 수직 테두리선(드로잉 경로)을 분석하여 포스터의 상자 영역을 찾음
+                    left_x, right_x = None, None
+                    top_y, bottom_y = None, None
+                    
+                    drawings = page.get_drawings()
+                    for d in drawings:
+                        rect = d["rect"]
+                        width = rect.x1 - rect.x0
+                        height = rect.y1 - rect.y0
+                        # 수직선 검출 (가로폭이 아주 얇고, 높이가 300포인트 이상인 테두리선)
+                        if width <= 1.0 and height >= 300:
+                            # 좌측 테두리선 후보 (x 좌표가 50~70 사이)
+                            if 50 <= rect.x0 <= 70:
+                                left_x = rect.x0
+                                top_y = rect.y0 if top_y is None else min(top_y, rect.y0)
+                                bottom_y = rect.y1 if bottom_y is None else max(bottom_y, rect.y1)
+                            # 우측 테두리선 후보 (x 좌표가 520~550 사이)
+                            elif 520 <= rect.x0 <= 550:
+                                right_x = rect.x0
+                                top_y = rect.y0 if top_y is None else min(top_y, rect.y0)
+                                bottom_y = rect.y1 if bottom_y is None else max(bottom_y, rect.y1)
+                                
+                    # 만약 좌우 수직 테두리선과 상하 범위를 모두 찾아냈다면 그 영역을 포스터 상자로 정의
+                    if left_x is not None and right_x is not None and top_y is not None and bottom_y is not None:
+                        # 외곽 검은 테두리선(1pt 두께)을 안쪽으로 1.5포인트 깎아 선까지 완벽히 지우고 안쪽 콘텐츠만 크롭
+                        clip_rect = fitz.Rect(left_x + 1.5, top_y + 1.5, right_x - 1.5, bottom_y - 1.5)
+                        pix = page.get_pixmap(clip=clip_rect, dpi=150)
+                    else:
+                        # 찾지 못한 경우 이미지들의 union_rect 영역 사용
+                        if union_rect and not union_rect.is_empty:
+                            padding = 5
+                            x0 = max(0, union_rect.x0 - padding)
+                            y0 = max(0, union_rect.y0 - padding)
+                            x1 = min(page.rect.x1, union_rect.x1 + padding)
+                            y1 = min(page.rect.y1, union_rect.y1 + padding)
+                            clip_rect = fitz.Rect(x0, y0, x1, y1)
+                            pix = page.get_pixmap(clip=clip_rect, dpi=150)
+                        else:
+                            pix = page.get_pixmap(dpi=150)
+                        
+                    img_name = f"pdf_page_{page_idx+1}_render.png"
+                    out_path = os.path.join(temp_dir, img_name)
+                    pix.save(out_path)
+                    images.append(out_path)
+                    continue  # 전체 페이지 렌더링을 수행했으므로 조각 이미지 추출은 스킵
+                except Exception as re:
+                    print(f"[Warning] Failed to render page {page_idx+1} area: {re}")
+            
+            # 일반 텍스트 페이지는 유의미한 개별 이미지 객체만 추출 (잘림 방지를 위해 바운딩 박스 크롭 렌더링 적용)
+            for img_idx, img_info in enumerate(image_list):
+                try:
+                    xref = img_info[0]
+                    rects = page.get_image_rects(xref)
+                    
+                    if rects:
+                        # 페이지 상의 실제 이미지 사각형 영역들을 클리핑하여 렌더링 (마스크 결합 및 잘림 방지)
+                        for r_idx, rect in enumerate(rects):
+                            width_pt = rect.x1 - rect.x0
+                            height_pt = rect.y1 - rect.y0
+                            
+                            # 가로/세로가 약 20pt(약 40px) 이상인 유의미한 크기만 추출 (로고 등 얇은 배너 지원)
+                            if width_pt >= 20 and height_pt >= 20:
+                                aspect_ratio = width_pt / height_pt if height_pt > 0 else 0
+                                if 0.1 <= aspect_ratio <= 10.0:
+                                    # 고해상도(150 DPI)로 해당 영역을 클리핑 렌더링하여 PNG로 저장
+                                    pix = page.get_pixmap(clip=rect, dpi=150)
+                                    suffix = f"_{r_idx}" if len(rects) > 1 else ""
+                                    img_name = f"pdf_p{page_idx+1}_img{img_idx+1}_{xref}{suffix}.png"
+                                    out_path = os.path.join(temp_dir, img_name)
+                                    pix.save(out_path)
+                                    images.append(out_path)
+                    else:
+                        # 렌더링 영역 정보를 얻지 못할 경우에만 원본 데이터를 덤프하고 Pillow로 표준화
+                        base_image = doc.extract_image(xref)
+                        image_bytes = base_image["image"]
+                        width = base_image.get("width", 0)
+                        height = base_image.get("height", 0)
+                        size = len(image_bytes)
+                        
+                        if width >= 40 and height >= 40 and size >= 2048:
+                            aspect_ratio = width / height if height > 0 else 0
+                            if 0.1 <= aspect_ratio <= 10.0:
+                                import io
+                                from PIL import Image as PILImage
+                                # Pillow를 사용해 열어서 표준 PNG 포맷으로 파일 저장 (삽입 실패 에러 완벽 방지)
+                                img = PILImage.open(io.BytesIO(image_bytes))
+                                img_name = f"pdf_p{page_idx+1}_img{img_idx+1}_{xref}.png"
+                                out_path = os.path.join(temp_dir, img_name)
+                                img.save(out_path, format="PNG")
+                                images.append(out_path)
+                except Exception as ie:
+                    print(f"[Warning] Failed to extract image {img_idx+1} on page {page_idx+1}: {ie}")
+                    
+    except Exception as e:
+        print(f"[Error] Failed to process PDF via PyMuPDF: {e}")
+        # 예외 발생 시에도 fallback으로 우회 시도
+        return extract_pdf_fallback(file_path, temp_dir)
+        
     return images, tables
 
 def extract_hwpx(file_path, temp_dir):
@@ -294,18 +492,54 @@ def build_docx_output(images, tables, output_path, input_file):
                 doc.add_paragraph(unicodedata.normalize('NFC', "(빈 표 데이터)"))
                 continue
             
-            num_rows = len(table)
-            num_cols = max(len(row) for row in table) if table else 0
-            
-            if num_rows > 0 and num_cols > 0:
-                docx_table = doc.add_table(rows=num_rows, cols=num_cols)
-                docx_table.style = 'Table Grid'
+            # 딕셔너리 형태의 병합 표인 경우
+            if isinstance(table, dict) and table.get('type') == 'merged_table':
+                num_rows = table['row_count']
+                num_cols = table['col_count']
                 
-                for r_idx, row in enumerate(table):
-                    for c_idx, val in enumerate(row):
-                        if c_idx < len(docx_table.rows[r_idx].cells):
-                            cell_val = str(val) if val is not None else ""
-                            docx_table.rows[r_idx].cells[c_idx].text = unicodedata.normalize('NFC', cell_val)
+                if num_rows > 0 and num_cols > 0:
+                    docx_table = doc.add_table(rows=num_rows, cols=num_cols)
+                    docx_table.style = 'Table Grid'
+                    
+                    # 1단계: 셀 병합 적용
+                    for cell_info in table['cells']:
+                        r_start = cell_info['r_start']
+                        r_end = cell_info['r_end']
+                        c_start = cell_info['c_start']
+                        c_end = cell_info['c_end']
+                        
+                        if (r_end - r_start > 1) or (c_end - c_start > 1):
+                            try:
+                                cell_a = docx_table.cell(r_start, c_start)
+                                cell_b = docx_table.cell(r_end - 1, c_end - 1)
+                                cell_a.merge(cell_b)
+                            except Exception as me:
+                                print(f"[Warning] Table cell merge failed: {me}")
+                                
+                    # 2단계: 텍스트 채우기 (정규화 포함)
+                    for cell_info in table['cells']:
+                        r_start = cell_info['r_start']
+                        c_start = cell_info['c_start']
+                        cell_text = cell_info['text']
+                        if cell_text:
+                            try:
+                                docx_table.cell(r_start, c_start).text = unicodedata.normalize('NFC', str(cell_text))
+                            except Exception as te:
+                                print(f"[Warning] Failed to set text on table cell ({r_start}, {c_start}): {te}")
+            else:
+                # 기존 2차원 리스트 표 처리 (하위 호환성)
+                num_rows = len(table)
+                num_cols = max(len(row) for row in table) if table else 0
+                
+                if num_rows > 0 and num_cols > 0:
+                    docx_table = doc.add_table(rows=num_rows, cols=num_cols)
+                    docx_table.style = 'Table Grid'
+                    
+                    for r_idx, row in enumerate(table):
+                        for c_idx, val in enumerate(row):
+                            if c_idx < len(docx_table.rows[r_idx].cells):
+                                cell_val = str(val) if val is not None else ""
+                                docx_table.rows[r_idx].cells[c_idx].text = unicodedata.normalize('NFC', cell_val)
             doc.add_paragraph()
     else:
         doc.add_heading(unicodedata.normalize('NFC', "추출된 표 목록"), level=2)
