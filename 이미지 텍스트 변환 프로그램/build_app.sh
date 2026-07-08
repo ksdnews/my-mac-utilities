@@ -10,7 +10,7 @@ echo "=========================================="
 APP_NAME="이미지 텍스트 추출기"
 SWIFT_FILE="mac_ocr_app.swift"
 APP_DIR="${APP_NAME}.app"
-DESKTOP_DIR="/Users/ksdnews/Desktop"
+DESKTOP_DIR="${HOME}/Desktop"
 
 # 1. Clean previous build artifacts
 echo "🧹 기존 빌드 잔재를 정리하는 중..."
