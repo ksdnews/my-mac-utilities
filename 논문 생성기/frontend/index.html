@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SCI 논문 생성기</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div>
+      <h1>📄 SCI 논문 생성기</h1>
+      <div class="subtitle">AI 기반 SCI(E) 논문 초안 생성 시스템</div>
+    </div>
+    <div id="usage-badge" class="hidden"></div>
+  </header>
+
+  <!-- ================= 입력 폼 ================= -->
+  <section id="view-input">
+    <div class="card">
+      <h2>1. 논문 기초 정보</h2>
+      <div class="row-2">
+        <div class="field">
+          <label>논문 유형</label>
+          <select id="f-paper-type"></select>
+        </div>
+        <div class="field">
+          <label>작성 언어</label>
+          <select id="f-language"></select>
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>연구 분야</label>
+          <input type="text" id="f-field" placeholder="예: Plant Science, Public Health ..." />
+        </div>
+        <div class="field">
+          <label>인용 스타일</label>
+          <select id="f-citation-style"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>논문 주제 / 가제</label>
+        <input type="text" id="f-topic" placeholder="예: Effect of X on Y in Z population" />
+      </div>
+      <div class="field">
+        <label>연구 목적 / 가설</label>
+        <textarea id="f-purpose" placeholder="이 연구의 목적, 연구 질문, 가설을 적어주세요."></textarea>
+      </div>
+      <div class="field">
+        <label>연구 방법 메모</label>
+        <textarea id="f-methods" placeholder="연구 설계, 대상/재료, 절차, 도구/장비, 분석 방법 등"></textarea>
+      </div>
+      <div class="field">
+        <label>결과 / 데이터 메모</label>
+        <textarea id="f-results" placeholder="주요 수치, 통계 결과, 관찰된 경향 등 실제로 얻은 결과"></textarea>
+      </div>
+      <div class="field">
+        <label>키워드 <span class="hint">(쉼표로 구분)</span></label>
+        <input type="text" id="f-keywords" placeholder="keyword1, keyword2, keyword3" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. 참고문헌 / 윤리 정보 <span class="hint">(선택)</span></h2>
+      <div class="field">
+        <label>참고문헌 원문 <span class="hint">한 줄에 하나씩, 형식 무관</span></label>
+        <textarea id="f-references" placeholder="보유한 참고문헌 목록을 형식에 상관없이 붙여넣으세요."></textarea>
+      </div>
+      <div class="field">
+        <label>윤리 정보 <span class="hint">IRB 승인번호, 이해상충, 데이터 가용성 등 — AI가 지어내지 않고 그대로 반영합니다</span></label>
+        <textarea id="f-ethics" placeholder="예: This study was approved by XYZ IRB (approval no. 2026-001). The authors declare no conflict of interest."></textarea>
+      </div>
+      <div class="field">
+        <label>추가 지시사항 <span class="hint">(선택)</span></label>
+        <textarea id="f-extra" placeholder="예: Discussion에서 임상적 함의를 강조해줘"></textarea>
+      </div>
+    </div>
+
+    <button class="primary block" id="btn-start">논문 초안 생성 시작</button>
+  </section>
+
+  <!-- ================= 파이프라인 진행 화면 ================= -->
+  <section id="view-pipeline" class="hidden">
+    <div class="card">
+      <h2>
+        진행 상황
+        <span id="status-badge" class="status-badge running">대기 중</span>
+      </h2>
+      <div id="log-panel"></div>
+    </div>
+
+    <!-- Gate 1 -->
+    <div class="card hidden" id="gate1-card">
+      <h2>🚦 Gate 1 — 아웃라인 검토</h2>
+      <div id="gate1-warnings" class="warning-list"></div>
+      <div id="gate1-outline"></div>
+      <h2 style="margin-top:18px">디렉터 검토 요약</h2>
+      <div class="verdict-box" id="gate1-summary"></div>
+      <div class="field">
+        <label>수정 요청 (선택 — 비워두면 승인만 진행)</label>
+        <textarea id="gate1-feedback" placeholder="예: 제목에 방법론을 명시해줘"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="primary" id="gate1-approve">✅ 승인 → 초안 작성 시작</button>
+        <button id="gate1-revise">✏️ 피드백 반영 수정</button>
+        <button class="danger-outline" id="gate1-regenerate">🔄 전체 재생성</button>
+      </div>
+    </div>
+
+    <!-- Gate 2 -->
+    <div class="card hidden" id="gate2-card">
+      <h2>🚦 Gate 2 — 검증 결과 검토</h2>
+      <div class="check-grid" id="gate2-stats"></div>
+      <h2>근거 부족 주장</h2>
+      <ul class="issue-list" id="gate2-unsupported"></ul>
+      <h2>재현성 이슈</h2>
+      <ul class="issue-list" id="gate2-repro"></ul>
+      <h2>어색한 문장</h2>
+      <ul class="issue-list" id="gate2-awkward"></ul>
+      <h2>약어 이슈</h2>
+      <ul class="issue-list" id="gate2-abbrev"></ul>
+      <div class="field">
+        <label>추가 수정 요청 (선택 — 비워두면 위 지적사항만 반영)</label>
+        <textarea id="gate2-feedback"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="primary" id="gate2-approve">✅ 승인 → 최종 감사 시작</button>
+        <button id="gate2-revise">✏️ 지적사항 + 피드백 반영 수정</button>
+        <button class="danger-outline" id="gate2-regenerate">🔄 재검증</button>
+      </div>
+    </div>
+
+    <!-- Complete -->
+    <div class="card hidden" id="complete-card">
+      <h2>✅ 완료</h2>
+      <div class="check-grid" id="complete-stats"></div>
+      <div class="verdict-box" id="complete-verdict"></div>
+      <div class="field">
+        <label>원고 다운로드</label>
+        <div class="btn-row">
+          <button class="primary" id="btn-download-manuscript">📄 DOCX</button>
+          <button id="btn-download-manuscript-pdf">📕 PDF</button>
+          <button id="btn-download-manuscript-md">📝 Markdown</button>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-download-checklist">📋 체크리스트 리포트 다운로드</button>
+        <button id="btn-download-reviewer-qa">🎯 예상 심사위원 Q&A 다운로드</button>
+      </div>
+    </div>
+
+    <!-- Reviewer Q&A -->
+    <div class="card hidden" id="reviewer-qa-card">
+      <h2>🎯 예상 심사위원 질문 & 디펜스</h2>
+      <div id="reviewer-qa-list"></div>
+    </div>
+
+    <!-- Error -->
+    <div class="card hidden" id="error-card">
+      <h2 style="color:var(--error)">⚠️ 오류 발생</h2>
+      <div class="verdict-box" id="error-message" style="border-color:var(--error)"></div>
+    </div>
+  </section>
+
+  <footer class="foot-note">SCI 논문 생성기 — 생성된 초안은 반드시 연구자 본인이 검토·검증 후 투고해야 합니다.</footer>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

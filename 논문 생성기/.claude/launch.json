@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "paper-generator-backend",
+      "runtimeExecutable": ".venv/bin/python3",
+      "runtimeArgs": ["backend/main.py"],
+      "port": 8010
+    }
+  ]
+}
