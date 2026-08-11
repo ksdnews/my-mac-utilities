@@ -1,0 +1,7 @@
+# SCI 논문 생성기 - 필요한 파이썬 패키지
+fastapi>=0.115.0
+uvicorn>=0.32.0
+aiosqlite>=0.20.0
+google-genai>=0.3.0
+python-docx>=1.1.0
+reportlab>=4.2.0
