@@ -10,8 +10,43 @@ CONFIG_FILE  = os.path.join(BASE_DIR, "config.json")
 HISTORY_FILE = os.path.join(BASE_DIR, "sent_history.json")
 WEEKDAYS_KO  = ["월", "화", "수", "목", "금", "토", "일"]
 
+GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME") or "telegram-alert-bot-history-80500727934"
+GCS_CONFIG_BLOB = "config.json"
+GCS_BLOB_NAME   = "sent_history.json"
+
+def _get_gcs_bucket():
+    """Google Cloud Storage 버킷 연결 객체 반환 (미존재 시 자동 생성)"""
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        if not bucket.exists():
+            try:
+                bucket = client.create_bucket(GCS_BUCKET_NAME, location="asia-northeast3")
+                print(f"📦 [GCS] 신규 영구 저장소 버킷 생성: {GCS_BUCKET_NAME}")
+            except Exception:
+                pass
+        return bucket
+    except Exception:
+        return None
+
 def load_config():
-    """config.json 설정 로드"""
+    """config.json 설정 로드 (GCS 원격 저장소 우선, 로컬 파일 백업)"""
+    # 1. GCS 원격 저장소에서 로드
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            blob = bucket.blob(GCS_CONFIG_BLOB)
+            if blob.exists():
+                content = blob.download_as_text(encoding="utf-8")
+                cfg = json.loads(content)
+                if cfg and isinstance(cfg, dict):
+                    print("📦 [GCS 영구 저장소] 최신 원격 config.json 로드 완료")
+                    return cfg
+        except Exception as e:
+            print(f"⚠️ GCS config 로드 오류 (로컬로 전환): {e}")
+
+    # 2. 로컬 config.json 로드
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -20,23 +55,99 @@ def load_config():
             print(f"⚠️ config.json 로드 오류: {e}")
     return {}
 
+def save_config(cfg):
+    """config.json 저장 (GCS 원격 저장소 및 로컬 동시 보관)"""
+    # 1. GCS 저장
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            blob = bucket.blob(GCS_CONFIG_BLOB)
+            blob.upload_from_string(json.dumps(cfg, ensure_ascii=False, indent=2), content_type="application/json; charset=utf-8")
+            print("📦 [GCS 영구 저장소] config.json 원격 동기화 완료")
+        except Exception as e:
+            print(f"⚠️ GCS config 저장 오류: {e}")
+
+    # 2. 로컬 저장
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ 로컬 config.json 저장 오류: {e}")
+
 CONFIG = load_config()
 
 # ==============================================================================
 # 1. 환경변수 및 토큰 설정
 # ==============================================================================
-BOT_TOKEN       = os.environ.get("TELEGRAM_BOT_TOKEN") or CONFIG.get("telegram", {}).get("bot_token", "").strip()
-DEFAULT_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+BOT_TOKEN       = ""
+DEFAULT_CHAT_ID = ""
+CHAT_ID_AERO    = ""
+CHAT_ID_MEDIA   = ""
+CHAT_ID_QT      = ""
+CHAT_ID_AI_NEWS = ""
+CHAT_ID_AI_YT   = ""
+DATA_GO_KR_KEY  = ""
+YOUTUBE_API_KEY = ""
+YOUTUBE_MEDIA   = []
+YOUTUBE_AI      = []
+PRESS_TARGETS   = []
+AI_NEWSLETTERS  = []
 
-channels_cfg = CONFIG.get("telegram", {}).get("channels", {})
-CHAT_ID_AERO    = os.environ.get("CHAT_ID_AERO")    or channels_cfg.get("aero", {}).get("chat_id", "-1004303018302") or DEFAULT_CHAT_ID
-CHAT_ID_MEDIA   = os.environ.get("CHAT_ID_MEDIA")   or channels_cfg.get("media", {}).get("chat_id", "-1003965956256") or DEFAULT_CHAT_ID
-CHAT_ID_QT      = os.environ.get("CHAT_ID_QT")      or channels_cfg.get("qt", {}).get("chat_id", "-1004304461870") or DEFAULT_CHAT_ID
-CHAT_ID_AI_NEWS = os.environ.get("CHAT_ID_AI_NEWS") or channels_cfg.get("ai_news", {}).get("chat_id", "-1003755390083") or DEFAULT_CHAT_ID
-CHAT_ID_AI_YT   = os.environ.get("CHAT_ID_AI_YT")   or channels_cfg.get("ai_yt", {}).get("chat_id", "-1003849449000") or DEFAULT_CHAT_ID
+def refresh_config():
+    """글로벌 설정 및 채널 목록 최신화"""
+    global CONFIG, BOT_TOKEN, DEFAULT_CHAT_ID
+    global CHAT_ID_AERO, CHAT_ID_MEDIA, CHAT_ID_QT, CHAT_ID_AI_NEWS, CHAT_ID_AI_YT
+    global DATA_GO_KR_KEY, YOUTUBE_API_KEY, YOUTUBE_MEDIA, YOUTUBE_AI, PRESS_TARGETS, AI_NEWSLETTERS
 
-DATA_GO_KR_KEY = os.environ.get("DATA_GO_KR_KEY") or CONFIG.get("telegram", {}).get("data_go_kr_key", "242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY") or CONFIG.get("telegram", {}).get("youtube_api_key", "").strip() or CONFIG.get("youtube_api_key", "").strip()
+    CONFIG = load_config()
+    BOT_TOKEN       = os.environ.get("TELEGRAM_BOT_TOKEN") or CONFIG.get("telegram", {}).get("bot_token", "8657720717:AAEZm4nKIge58bfJ0n56nruQ05GAnR0KWXY").strip()
+    DEFAULT_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+
+    channels_cfg = CONFIG.get("telegram", {}).get("channels", {})
+    CHAT_ID_AERO    = os.environ.get("CHAT_ID_AERO")    or channels_cfg.get("aero", {}).get("chat_id", "-1004303018302") or DEFAULT_CHAT_ID
+    CHAT_ID_MEDIA   = os.environ.get("CHAT_ID_MEDIA")   or channels_cfg.get("media", {}).get("chat_id", "-1003965956256") or DEFAULT_CHAT_ID
+    CHAT_ID_QT      = os.environ.get("CHAT_ID_QT")      or channels_cfg.get("qt", {}).get("chat_id", "-1004304461870") or DEFAULT_CHAT_ID
+    CHAT_ID_AI_NEWS = os.environ.get("CHAT_ID_AI_NEWS") or channels_cfg.get("ai_news", {}).get("chat_id", "-1003755390083") or DEFAULT_CHAT_ID
+    CHAT_ID_AI_YT   = os.environ.get("CHAT_ID_AI_YT")   or channels_cfg.get("ai_yt", {}).get("chat_id", "-1003849449000") or DEFAULT_CHAT_ID
+
+    DATA_GO_KR_KEY  = os.environ.get("DATA_GO_KR_KEY") or CONFIG.get("telegram", {}).get("data_go_kr_key", "242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627")
+    YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY") or CONFIG.get("telegram", {}).get("youtube_api_key", "").strip() or CONFIG.get("youtube_api_key", "").strip()
+
+    yt_cfg = CONFIG.get("youtube_channels", [])
+    if yt_cfg:
+        YOUTUBE_MEDIA = [c for c in yt_cfg if c.get("enabled", True) and c.get("target") == "media"]
+        YOUTUBE_AI    = [c for c in yt_cfg if c.get("enabled", True) and c.get("target") == "ai"]
+    else:
+        YOUTUBE_MEDIA = [
+            {"name": "선두교회", "channel_id": "UCij1EEaODLVz87fJfZYOLHg"},
+            {"name": "새롭게하소서CBS", "channel_id": "UCqCqf21juyyL_8peGs2CWGg"},
+            {"name": "이성미의못간다", "channel_id": "UC0m0-TblIhiyJmhe-KbNO2A"},
+            {"name": "교회는 안 다니는데 궁금은 하네요", "channel_id": "UCzhoPJDYg_5ccq0PAYuMAxQ"},
+        ]
+        YOUTUBE_AI = [
+            {"name": "레인 | AI 바이브코딩", "channel_id": "UCc3-QWjpSyx7D_x7kh3TdgQ"},
+            {"name": "코딩알려주는누나", "channel_id": "UCfBvs0ZJdTA43AFRgZ98HyA"},
+        ]
+
+    press_cfg = CONFIG.get("press_targets", [])
+    if press_cfg:
+        PRESS_TARGETS = [p for p in press_cfg if p.get("enabled", True)]
+    else:
+        PRESS_TARGETS = [
+            {"name": "우주항공청", "rep_code": "B00026", "filter": "none", "enabled": True},
+            {"name": "국토교통부", "rep_code": "A00006", "filter": "aviation", "enabled": True},
+        ]
+
+    ai_news_cfg = CONFIG.get("ai_newsletters", [])
+    if ai_news_cfg:
+        AI_NEWSLETTERS = [n for n in ai_news_cfg if n.get("enabled", True)]
+    else:
+        AI_NEWSLETTERS = [
+            {"name": "AI타임스", "url": "https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1", "enabled": True},
+            {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/topic/artificial-intelligence/", "enabled": True},
+        ]
+
+refresh_config()
 
 HEADERS = {
     "User-Agent": (
@@ -46,37 +157,6 @@ HEADERS = {
     ),
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
 }
-
-# ==============================================================================
-# 2. 채널 및 대상 정의
-# ==============================================================================
-yt_cfg = CONFIG.get("youtube_channels", [])
-if yt_cfg:
-    YOUTUBE_MEDIA = [c for c in yt_cfg if c.get("enabled", True) and c.get("target") == "media"]
-    YOUTUBE_AI    = [c for c in yt_cfg if c.get("enabled", True) and c.get("target") == "ai"]
-else:
-    YOUTUBE_MEDIA = [
-        {"name": "선두교회", "channel_id": "UCij1EEaODLVz87fJfZYOLHg"},
-        {"name": "새롭게하소서CBS", "channel_id": "UCqCqf21juyyL_8peGs2CWGg"},
-        {"name": "이성미의못간다", "channel_id": "UC0m0-TblIhiyJmhe-KbNO2A"},
-        {"name": "교회는 안 다니는데 궁금은 하네요", "channel_id": "UCzhoPJDYg_5ccq0PAYuMAxQ"},
-    ]
-    YOUTUBE_AI = [
-        {"name": "조코딩 JoCoding", "channel_id": "UCQNE2JmbasNYbjGAcuBiRRg"},
-        {"name": "테디노트 TeddyNote", "channel_id": "UCt2wAAXgm87ACiQnDHQEW6Q"},
-        {"name": "노마드 코더", "channel_id": "UCUpJs89fSBXNolQGOYKn0YQ"},
-        {"name": "레인 | AI 바이브코딩", "channel_id": "UCc3-QWjpSyx7D_x7kh3TdgQ"},
-    ]
-
-# 보도자료 부처
-press_cfg = CONFIG.get("press_targets", [])
-if press_cfg:
-    PRESS_TARGETS = [p for p in press_cfg if p.get("enabled", True)]
-else:
-    PRESS_TARGETS = [
-        {"name": "우주항공청", "rep_code": "B00026", "filter": "none", "enabled": True},
-        {"name": "국토교통부", "rep_code": "A00006", "filter": "aviation", "enabled": True},
-    ]
 
 AVIATION_KEYWORDS = [
     # 1. 전국 공항 및 신공항
@@ -666,6 +746,7 @@ def test_telegram_connection():
         send_telegram(test_msg, cid)
 
 def run_pipeline(mode="HOURLY"):
+    refresh_config()
     print(f"=== 실행 모드: {mode} | {get_formatted_datetime()} ===")
 
     if not BOT_TOKEN:
@@ -762,7 +843,16 @@ def run_pipeline(mode="HOURLY"):
 # 9. Google Cloud Functions / Cloud Run HTTP Handler
 # ==============================================================================
 def telegram_alert_bot(request=None):
-    """Google Cloud Functions 엔트리포인트 (HTTP Trigger)"""
+    """Google Cloud Functions 엔트리포인트 (HTTP Trigger & CORS 지원)"""
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+    if request is not None and getattr(request, "method", "") == "OPTIONS":
+        return ("", 204, cors_headers)
+
     mode = "HOURLY"
     if request is not None:
         try:
@@ -775,6 +865,32 @@ def telegram_alert_bot(request=None):
     elif len(sys.argv) > 1:
         mode = sys.argv[1].upper()
 
+    # 원격 설정 동기화 모드 (대시보드 -> 구글 클라우드 원클릭 적용)
+    if mode in ["UPDATE_CONFIG", "SYNC_CONFIG"]:
+        new_cfg = None
+        if request is not None:
+            try:
+                new_cfg = request.get_json(silent=True)
+                if not new_cfg and hasattr(request, "data") and request.data:
+                    new_cfg = json.loads(request.data.decode("utf-8"))
+            except Exception as e:
+                print(f"⚠️ 설정 데이터 파싱 오류: {e}")
+
+        if new_cfg and isinstance(new_cfg, dict):
+            save_config(new_cfg)
+            refresh_config()
+            ch_count = len(new_cfg.get("youtube_channels", []))
+            res = {
+                "status": "success",
+                "message": "Google Cloud에 최신 설정이 1초 만에 원격 동기화되었습니다!",
+                "channels_count": ch_count,
+                "timestamp": get_formatted_datetime()
+            }
+            return (json.dumps(res, ensure_ascii=False), 200, {**cors_headers, "Content-Type": "application/json; charset=utf-8"})
+        else:
+            res = {"status": "error", "message": "유효하지 않은 설정 데이터입니다."}
+            return (json.dumps(res, ensure_ascii=False), 400, {**cors_headers, "Content-Type": "application/json; charset=utf-8"})
+
     count = run_pipeline(mode)
     res = {
         "status": "success",
@@ -782,7 +898,7 @@ def telegram_alert_bot(request=None):
         "sent_count": count,
         "timestamp": get_formatted_datetime()
     }
-    return (json.dumps(res, ensure_ascii=False), 200, {"Content-Type": "application/json; charset=utf-8"})
+    return (json.dumps(res, ensure_ascii=False), 200, {**cors_headers, "Content-Type": "application/json; charset=utf-8"})
 
 def main(request=None):
     return telegram_alert_bot(request)
