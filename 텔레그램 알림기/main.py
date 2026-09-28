@@ -122,8 +122,46 @@ def get_formatted_datetime(dt: datetime = None, include_approx: bool = False) ->
     time_str = format_korean_time(dt)
     return f"{dt.strftime('%Y-%m-%d')}({weekday}) {time_str}"
 
+GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME") or CONFIG.get("gcs_bucket_name", "telegram-alert-bot-history-80500727934")
+GCS_BLOB_NAME   = "sent_history.json"
+
+def _get_gcs_bucket():
+    """Google Cloud Storage 버킷 연결 객체 반환 (미존재 시 자동 생성)"""
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        bucket = client.bucket(GCS_BUCKET_NAME)
+        if not bucket.exists():
+            try:
+                bucket = client.create_bucket(GCS_BUCKET_NAME, location="asia-northeast3")
+                print(f"📦 [GCS] 신규 영구 저장소 버킷 생성: {GCS_BUCKET_NAME}")
+            except Exception:
+                pass
+        return bucket
+    except Exception:
+        return None
+
 def load_history():
-    """발송 장부 로드"""
+    """발송 장부 로드 (Google Cloud Storage 영구 저장소 우선, 로컬 파일 백업)"""
+    # 1. 구글 클라우드 영구 저장소(GCS)에서 로드
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            blob = bucket.blob(GCS_BLOB_NAME)
+            if blob.exists():
+                content = blob.download_as_text(encoding="utf-8")
+                data = json.loads(content)
+                if isinstance(data, list):
+                    print(f"📦 [GCS 영구 장부] {len(data)}건의 발송 이력 로드 완료")
+                    return [str(x) for x in data]
+                elif isinstance(data, dict):
+                    hist = data.get("history", [])
+                    print(f"📦 [GCS 영구 장부] {len(hist)}건의 발송 이력 로드 완료")
+                    return [str(x) for x in hist]
+        except Exception as e:
+            print(f"⚠️ GCS 장부 로드 예외 (로컬로 전환): {e}")
+
+    # 2. 로컬 파일에서 로드
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -133,17 +171,29 @@ def load_history():
                 elif isinstance(data, dict):
                     return [str(x) for x in data.get("history", [])]
         except Exception as e:
-            print(f"⚠️ 발송 장부 로드 오류: {e}")
+            print(f"⚠️ 로컬 발송 장부 로드 오류: {e}")
     return []
 
 def save_history(history_list):
-    """최대 최근 1000개의 발송 기록 보존"""
+    """발송 장부 저장 (최대 2000개 기록 보존, GCS 영구 저장소 및 로컬 동시 보관)"""
+    trimmed = history_list[-2000:]
+
+    # 1. 구글 클라우드 영구 저장소(GCS)에 저장
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            blob = bucket.blob(GCS_BLOB_NAME)
+            blob.upload_from_string(json.dumps(trimmed, ensure_ascii=False, indent=2), content_type="application/json")
+            print(f"📦 [GCS 영구 장부] {len(trimmed)}건 동기화 및 영구 보존 완료")
+        except Exception as e:
+            print(f"⚠️ GCS 장부 저장 예외: {e}")
+
+    # 2. 로컬 파일에 저장
     try:
-        trimmed = history_list[-1000:]
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(trimmed, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"⚠️ 발송 장부 저장 오류: {e}")
+        print(f"⚠️ 로컬 발송 장부 저장 오류: {e}")
 
 def send_telegram(text, chat_id, retry=2):
     """텔레그램 메시지 발송 API 호출"""
