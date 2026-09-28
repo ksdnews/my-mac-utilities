@@ -1,0 +1,108 @@
+{
+  "telegram": {
+    "bot_token": "8657720717:AAEZm4nKIge58bfJ0n56nruQ05GAnR0KWXY",
+    "youtube_api_key": "AIzaSyAbqWqwaU8fAKM15_wcdVT7Aoo1ohT22x0",
+    "data_go_kr_key": "242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627",
+    "channels": {
+      "aero": {
+        "name": "[항공 보도자료]",
+        "chat_id": "-1004303018302",
+        "description": "우주항공청 · 국토교통부 보도자료"
+      },
+      "media": {
+        "name": "[유튜브] 관심 영상 알림",
+        "chat_id": "-1003965956256",
+        "description": "유튜브 채널 새 영상 알림"
+      },
+      "qt": {
+        "name": "[QT] 복있는 사람",
+        "chat_id": "-1004304461870",
+        "description": "매일 새벽 큐티 묵상"
+      },
+      "ai_news": {
+        "name": "[AI] 관심자료",
+        "chat_id": "-1003755390083",
+        "description": "최신 AI 소식지 및 테크 뉴스 알림"
+      },
+      "ai_yt": {
+        "name": "[AI] 유투브 영상",
+        "chat_id": "-1003849449000",
+        "description": "AI 전문 유튜브 채널 신규 영상 알림"
+      }
+    }
+  },
+  "youtube_channels": [
+    {
+      "name": "선두교회",
+      "channel_id": "UCij1EEaODLVz87fJfZYOLHg",
+      "target": "media",
+      "enabled": true,
+      "avatar": "assets/sundoo.png"
+    },
+    {
+      "name": "새롭게하소서CBS",
+      "channel_id": "UCqCqf21juyyL_8peGs2CWGg",
+      "target": "media",
+      "enabled": true,
+      "avatar": "assets/saeropge.png"
+    },
+    {
+      "name": "이성미의못간다",
+      "channel_id": "UC0m0-TblIhiyJmhe-KbNO2A",
+      "target": "media",
+      "enabled": true,
+      "avatar": "assets/leeseongmi.png"
+    },
+    {
+      "name": "교회는 안 다니는데 궁금은 하네요",
+      "channel_id": "UCzhoPJDYg_5ccq0PAYuMAxQ",
+      "target": "media",
+      "enabled": true
+    },
+    {
+      "name": "Vibe RaiN",
+      "channel_id": "UCc3-QWjpSyx7D_x7kh3TdgQ",
+      "target": "ai",
+      "enabled": true
+    },
+    {
+      "name": "코딩알려주는누나",
+      "channel_id": "UCfBvs0ZJdTA43NQrnI9imGA",
+      "target": "ai",
+      "enabled": true
+    }
+  ],
+  "ai_newsletters": [
+    {
+      "name": "AI타임스",
+      "desc": "국내 최신 생성형 AI 및 테크 산업 동향",
+      "url": "https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1",
+      "enabled": true
+    },
+    {
+      "name": "MIT Technology Review",
+      "desc": "글로벌 핵심 AI 테크 분석 브리핑",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/",
+      "enabled": true
+    }
+  ],
+  "press_targets": [
+    {
+      "name": "우주항공청",
+      "rep_code": "B00026",
+      "filter": "none",
+      "enabled": true
+    },
+    {
+      "name": "국토교통부",
+      "rep_code": "A00006",
+      "filter": "aviation",
+      "enabled": true
+    }
+  ],
+  "qt": {
+    "enabled": true,
+    "send_hour_kst": 3,
+    "send_minute_kst": 33
+  }
+}

@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>텔레그램 알림 관리 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffeaf3;
+  --bg2: #fff2f8;
+  --bg3: #ffd8ec;
+  --glass: rgba(255,182,210,0.15);
+  --glass2: rgba(255,182,210,0.25);
+  --border: rgba(255,140,185,0.22);
+  --border2: rgba(255,100,165,0.32);
+  --text: #4a102a;
+  --text2: #8c3558;
+  --text3: #b86285;
+  --blue: #f06292;
+  --blue2: #e91e8c;
+  --purple: #d81b60;
+  --green: #d81b60;
+  --red: #c2185b;
+  --orange: #f06292;
+  --cyan: #f06292;
+  --pink: #e91e8c;
+  --accent: #ff6eb4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  font-size: 14px;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 230px;
+  height: 100vh;
+  background: linear-gradient(180deg, #fff3f8 0%, #ffe0ef 100%);
+  border-right: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  box-shadow: 4px 0 20px rgba(255,100,160,0.1);
+}
+.sidebar-logo {
+  padding: 14px 18px 12px;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sidebar-logo .icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, #ffb6d9, #ff69b4);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(255,105,180,0.3);
+}
+.sidebar-logo .logo-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sidebar-logo h1 {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.sidebar-logo p {
+  font-size: 11.5px;
+  color: var(--text2);
+  margin-top: 2px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.nav-section { padding: 10px 14px 4px; }
+.nav-section-label { font-size: 11px; font-weight: 800; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; margin: 3px 8px;
+  border-radius: 10px; cursor: pointer;
+  color: var(--text2); font-size: 13.5px; font-weight: 700;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: rgba(255,140,185,0.2); color: var(--text); }
+.nav-item.active { background: linear-gradient(135deg, #ffd6e8, #ffc2de); color: #c2185b; border-left: 3px solid #e91e8c; box-shadow: 0 2px 8px rgba(233,30,140,0.12); }
+.nav-item .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  margin-left: auto; flex-shrink: 0;
+}
+.dot-green { background: #e91e8c; box-shadow: 0 0 6px #ff6eb4; }
+.dot-orange { background: #f48fb1; }
+.sidebar-footer {
+  padding: 12px 14px;
+  border-top: 2px solid var(--border);
+  font-size: 11.5px; color: var(--text3);
+  background: rgba(255,200,225,0.15);
+}
+.sidebar-footer .status-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+  font-weight: 700; color: var(--text2);
+}
+.pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #e91e8c;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); box-shadow:0 0 4px #e91e8c; }
+  50% { opacity:0.6; transform:scale(1.3); box-shadow:0 0 8px #ff6eb4; }
+}
+
+/* ── Main ── */
+.main {
+  margin-left: 230px;
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #ffeaf3 0%, #ffddec 100%);
+  overflow-y: auto;
+}
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 28px;
+  border-bottom: 2px solid var(--border);
+  background: rgba(255, 238, 246, 0.95);
+  backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 2px 10px rgba(255,100,160,0.05);
+}
+.topbar h2 { font-size: 18px; font-weight: 800; color: var(--text); }
+.topbar-actions { display: flex; gap: 8px; }
+.btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 700; cursor: pointer;
+  border: none; transition: background 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #ff69b4, #e91e8c);
+  color: white;
+  box-shadow: 0 3px 12px rgba(255,105,180,0.35);
+}
+.btn-primary:hover { opacity: 0.92; box-shadow: 0 4px 16px rgba(255,105,180,0.45); }
+.btn-secondary {
+  background: #ffeaf3; color: var(--text);
+  border: 1.5px solid var(--border2);
+  box-shadow: 0 2px 6px rgba(255,100,160,0.06);
+}
+.btn-secondary:hover { background: #ffd6ea; border-color: var(--pink); }
+.btn-danger {
+  background: rgba(216,27,96,0.12); color: var(--red);
+  border: 1.5px solid rgba(216,27,96,0.3);
+}
+.btn-danger:hover { background: rgba(216,27,96,0.22); }
+.btn-sm { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
+.btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+
+.content { padding: 14px 28px; flex: 1; }
+
+/* ── Pages ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Cards ── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+  margin-bottom: 12px;
+}
+.stat-card {
+  background: linear-gradient(145deg, #fff7fa 0%, #ffeaf3 100%);
+  border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 10px 14px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 3px 12px rgba(255,100,160,0.07);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.stat-card:hover { box-shadow: 0 4px 18px rgba(255,100,160,0.12); border-color: var(--border2); }
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent, var(--blue));
+  border-radius: 14px 14px 0 0;
+}
+.stat-label { font-size: 12.5px; color: var(--text2); font-weight: 700; margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1.1; }
+.stat-sub { font-size: 11.5px; color: var(--text3); margin-top: 2px; font-weight: 600; }
+
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-title { font-size: 16px; font-weight: 800; color: var(--text); }
+
+/* ── Channel Cards (Compact 2x2 Grid) ── */
+.channel-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 12px; }
+.channel-card {
+  background: linear-gradient(145deg, #fff8fb 0%, #ffeaf3 100%);
+  border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 12px 14px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 3px 12px rgba(255,100,160,0.07);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.channel-card:hover { border-color: rgba(255,105,180,0.5); box-shadow: 0 4px 18px rgba(255,100,160,0.12); }
+.channel-card .accent-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.channel-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.channel-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.channel-badge {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 14px;
+  font-size: 11.5px; font-weight: 800;
+}
+.badge-active { background: #ffd6e8; color: #c2185b; border: 1.5px solid rgba(233,30,140,0.35); box-shadow: 0 2px 6px rgba(233,30,140,0.1); }
+.badge-inactive { background: rgba(216,27,96,0.1); color: var(--red); border: 1px solid rgba(216,27,96,0.25); }
+.channel-name { font-size: 15px; font-weight: 800; margin-bottom: 2px; color: var(--text); }
+.channel-desc { font-size: 12px; color: var(--text2); line-height: 1.4; font-weight: 500; }
+.channel-id {
+  margin-top: 8px; padding: 6px 12px;
+  background: #ffddef; border-radius: 8px;
+  font-size: 12.5px; color: var(--text2); font-family: monospace;
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1.5px solid var(--border);
+  font-weight: 600;
+}
+.channel-id input {
+  background: transparent; border: none; color: #4a102a;
+  font-family: monospace; font-size: 12.5px; width: 100%;
+  outline: none; font-weight: 700;
+}
+
+/* ── YouTube List ── */
+.yt-list { display: flex; flex-direction: column; gap: 8px; }
+.yt-item {
+  background: linear-gradient(145deg, #fff8fb 0%, #ffeaf3 100%);
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 10px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(255,100,160,0.06);
+}
+.yt-item:hover { border-color: rgba(255,105,180,0.5); box-shadow: 0 3px 12px rgba(255,100,160,0.1); }
+.yt-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.yt-name { font-size: 14.5px; font-weight: 800; color: var(--text); }
+.yt-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ── Toggle ── */
+.toggle-wrap { display: flex; align-items: center; gap: 6px; }
+.toggle {
+  position: relative; width: 44px; height: 24px;
+  cursor: pointer;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: #ffd3e7; border-radius: 20px;
+  transition: 0.2s; border: 1.5px solid var(--border);
+}
+.toggle-slider:before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--text3); left: 2px; top: 2px;
+  transition: 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: #ffd6e8; border-color: var(--pink); }
+.toggle input:checked + .toggle-slider:before { background: var(--pink); transform: translateX(20px); }
+.toggle-label { font-size: 12px; color: var(--text2); font-weight: 700; white-space: nowrap; }
+
+/* ── Press targets ── */
+.press-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.press-item {
+  background: linear-gradient(145deg, #fff8fb 0%, #ffeaf3 100%);
+  border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(255,100,160,0.06);
+}
+.press-item:hover { border-color: rgba(255,105,180,0.5); box-shadow: 0 3px 12px rgba(255,100,160,0.1); }
+.press-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.press-info { flex: 1; }
+.press-name { font-size: 14.5px; font-weight: 800; margin-bottom: 2px; color: var(--text); }
+.press-meta { font-size: 12px; color: var(--text2); font-weight: 500; }
+.filter-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 14px; font-size: 10.5px; font-weight: 700;
+  margin-left: 4px;
+}
+.tag-all { background: #ffd6e8; color: #c2185b; border: 1px solid rgba(233,30,140,0.25); }
+.tag-filter { background: #ffe2c8; color: #d97706; border: 1px solid rgba(217,119,6,0.25); }
+
+/* ── API Card ── */
+.api-card {
+  background: linear-gradient(135deg, #fff5fa 0%, #ffddec 100%);
+  border: 1.5px solid rgba(255,105,180,0.35);
+  border-radius: 14px; padding: 12px 18px; margin-bottom: 12px;
+  box-shadow: 0 3px 12px rgba(255,100,160,0.08);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(74,16,42,0.45); backdrop-filter: blur(6px);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: linear-gradient(145deg, #fff8fb 0%, #ffeaf3 100%);
+  border: 2px solid rgba(255,105,180,0.4);
+  border-radius: 20px; padding: 24px 28px;
+  width: 480px; max-width: 92vw;
+  animation: slideUp 0.25s ease;
+  box-shadow: 0 16px 50px rgba(255,100,160,0.25);
+}
+@keyframes slideUp { from { opacity:0; transform:translateY(15px); } }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
+.modal-sub { font-size: 12.5px; color: var(--text2); margin-bottom: 18px; font-weight: 500; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.form-input {
+  width: 100%; padding: 10px 14px;
+  background: #fff2f8; border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text); font-size: 13.5px;
+  outline: none; transition: border-color 0.2s;
+  font-family: inherit; font-weight: 600;
+}
+.form-input:focus { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,110,180,0.18); background: #ffffff; }
+.form-input::placeholder { color: var(--text3); }
+.form-hint { font-size: 11.5px; color: var(--text3); margin-top: 4px; font-weight: 500; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* ── Export Modal ── */
+.code-block {
+  background: #ffeef6; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace; font-size: 12px;
+  color: #a01045; overflow: auto; max-height: 240px;
+  white-space: pre; line-height: 1.5;
+  margin-bottom: 12px; box-shadow: inset 0 2px 6px rgba(255,100,160,0.05);
+}
+
+/* ── QT section ── */
+.qt-card {
+  background: linear-gradient(145deg, #fff8fb 0%, #ffeaf3 100%);
+  border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 16px 20px; margin-bottom: 12px;
+  box-shadow: 0 3px 12px rgba(255,100,160,0.08);
+}
+.qt-time-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.qt-time-input {
+  background: #ffddef; border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 6px 10px;
+  color: var(--text); font-size: 15px; font-weight: 800;
+  width: 60px; outline: none; text-align: center;
+}
+
+/* ── Notification ── */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: linear-gradient(135deg, #fff8fb, #ffeaf3);
+  border: 2px solid rgba(255,105,180,0.6);
+  border-radius: 14px; padding: 12px 20px;
+  color: var(--text); font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+  z-index: 9999; opacity: 0; transform: translateY(10px);
+  transition: all 0.3s; pointer-events: none;
+  box-shadow: 0 8px 25px rgba(255,100,160,0.2);
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── AI Badge ── */
+.ai-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 14px; font-size: 11.5px; font-weight: 800;
+  background: linear-gradient(135deg, #ffd6e8, #ffc2de);
+  color: #c2185b; border: 1.5px solid rgba(233,30,140,0.3);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ffc4df; border-radius: 3px; }
+
+/* ── Divider ── */
+.divider { height: 1.5px; background: var(--border); margin: 16px 0; }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center; padding: 24px;
+  color: var(--text3); font-size: 13px; font-weight: 600;
+}
+.empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+
+/* ── Step guide (Compact Strip) ── */
+.step-guide {
+  background: linear-gradient(135deg, #fff0f7 0%, #ffddec 100%);
+  border: 1.5px solid rgba(255,110,180,0.3);
+  border-radius: 12px; padding: 10px 16px; margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(255,100,160,0.06);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.step-guide-title { font-size: 13px; font-weight: 800; color: #c2185b; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.step-list { display: flex; align-items: center; gap: 14px; list-style: none; }
+.step-list li { font-size: 12.5px; color: var(--text2); display: flex; gap: 6px; align-items: center; font-weight: 600; white-space: nowrap; }
+.step-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(135deg, #ff69b4, #e91e8c);
+  color: white; font-size: 11px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+  background: linear-gradient(135deg, #ff69b4, #e91e8c); color: white; font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ SIDEBAR ════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">☁️</div>
+    <div class="logo-text">
+      <h1>텔레그램 알림 관제실</h1>
+      <p>Google Cloud 24h 파이프라인</p>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-label">메뉴</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span>🏠</span> 대시보드
+      </div>
+      <div class="nav-item" onclick="showPage('telegram')">
+        <span>📱</span> 텔레그램 알림(5개 방)
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="nav-item" onclick="showPage('youtube')">
+        <span>▶️</span> 유튜브 알림
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="nav-item" onclick="showPage('press')">
+        <span>📋</span> 보도자료 알림
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="nav-item" onclick="showPage('qt')">
+        <span>📖</span> 큐티 (QT)
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="nav-item" onclick="showPage('ai')">
+        <span>🤖</span> AI 정보 알림 (유튜브+뉴스)
+        <div class="dot dot-green"></div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">클라우드 배포 & 관제</div>
+      <div class="nav-item" onclick="showPage('export')">
+        <span>☁️</span> Google Cloud 관제 & 배포
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="status-row">
+      <div class="pulse"></div>
+      <span>Google Cloud 24h 가동 중</span>
+    </div>
+    <div>마지막 수정: <span id="lastModified">방금</span></div>
+  </div>
+</aside>
+
+<!-- ════════════ MAIN ════════════ -->
+<main class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">대시보드</h2>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary" onclick="sendQTDirect()" style="background:#fff; border:1.5px solid #10b981; color:#047857; font-weight:800; display:flex; align-items:center; gap:5px;" title="브라우저에서 오늘의 큐티 3종을 [QT] 방으로 즉시 발송합니다"><span>📖</span> 큐티 즉시 발송</button>
+      <button class="btn btn-secondary" onclick="triggerCloudBot('HOURLY')" style="background:#fff; border:1.5px solid #e91e8c; color:#c2185b; font-weight:800;" title="구글 클라우드 봇을 지금 즉시 실행하여 실시간 알림을 발송합니다">⚡️ 지금 즉시 봇 실행</button>
+      <button class="btn btn-secondary" onclick="showPage('export')">☁️ Google Cloud 설정</button>
+      <button class="btn btn-primary" onclick="saveAll()">💾 설정 저장</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── PAGE: Dashboard ── -->
+    <div id="page-dashboard" class="page active">
+      <div class="step-guide">
+        <div class="step-guide-title">💡 관제실 안내</div>
+        <ul class="step-list">
+          <li><span class="step-num">1</span> 채널/부처 설정</li>
+          <li><span class="step-num">2</span> "설정 저장" 클릭</li>
+          <li><span class="step-num">3</span> "Google Cloud 관제"에서 최신 코드 배포</li>
+        </ul>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="ai-badge" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7;">☁️ Google Cloud 24시간 가동</span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card" style="--accent: var(--blue)">
+          <div class="stat-label">📱 텔레그램 알림</div>
+          <div class="stat-value" id="stat-tg">5</div>
+          <div class="stat-sub">5개 전용 채널 운영 중</div>
+        </div>
+        <div class="stat-card" style="--accent: var(--red)">
+          <div class="stat-label">▶️ 유튜브 알림</div>
+          <div class="stat-value" id="stat-yt">6</div>
+          <div class="stat-sub">YouTube Data API v3 연동</div>
+        </div>
+        <div class="stat-card" style="--accent: var(--green)">
+          <div class="stat-label">📋 보도자료 알림</div>
+          <div class="stat-value" id="stat-press">2</div>
+          <div class="stat-sub">우주항공청 · 국토교통부</div>
+        </div>
+        <div class="stat-card" style="--accent: var(--purple)">
+          <div class="stat-label">⏱ 실행 주기</div>
+          <div class="stat-value">1시간</div>
+          <div class="stat-sub">Cloud Scheduler 자동화</div>
+        </div>
+      </div>
+
+      <div class="api-card">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px;">☁️</span>
+          <div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--text);">Google Cloud 무중단 24시간 봇 파이프라인 가동 중</div>
+            <div style="font-size:11.5px; color:var(--text2); font-weight:600;">Cloud Functions + Cloud Scheduler (1개 스케줄러로 5개 채널 완벽 제어)</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="channel-badge badge-active" style="font-size:11px;">● 구글 클라우드 정상 연동</span>
+          <a href="https://console.cloud.google.com/cloudscheduler" target="_blank" class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:11.5px; text-decoration:none;">스케줄러 콘솔</a>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:6px;">
+        <div class="section-title">📡 현재 알림 채널 현황 (총 5개 방 분리 완료)</div>
+      </div>
+      <div class="channel-grid">
+        <!-- 1) 항공 보도자료 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background: linear-gradient(90deg, #4f9cf9, #8b5cf6)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(79,156,249,0.15);">✈️</div>
+              <div>
+                <div class="channel-name">[항공 보도자료]</div>
+                <div class="channel-desc">우주항공청 · 국토교통부(항공 필터)</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-aero" value="-1004303018302" onchange="syncChatId('aero', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 2) 일반 유튜브 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background: linear-gradient(90deg, #ef4444, #f59e0b)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(239,68,68,0.15);">📺</div>
+              <div>
+                <div class="channel-name">[유튜브] 관심 영상 알림</div>
+                <div class="channel-desc">선두교회, 새롭게하소서 등 일반 유튜브</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-media" value="-1003965956256" onchange="syncChatId('media', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 3) AI 유튜브 영상 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background: linear-gradient(90deg, #8b5cf6, #ec4899)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(139,92,246,0.15);">🎬</div>
+              <div>
+                <div class="channel-name">[AI] 유투브 영상</div>
+                <div class="channel-desc">Vibe RaiN, 코딩알려주는누나 등 AI 영상 전용</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-ai_yt" value="-1003849449000" onchange="syncChatId('ai_yt', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 4) AI 테크 뉴스 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background: linear-gradient(90deg, #06b6d4, #3b82f6)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(6,182,212,0.15);">📰</div>
+              <div>
+                <div class="channel-name">[AI] 관심자료 (뉴스)</div>
+                <div class="channel-desc">AI타임스, MIT Tech Review 등 테크 뉴스 전용</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-ai_news" value="-1003755390083" onchange="syncChatId('ai_news', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 5) QT 복있는 사람 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background: linear-gradient(90deg, #10b981, #06b6d4)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(16,185,129,0.15);">📖</div>
+              <div>
+                <div class="channel-name">[QT] 복있는 사람</div>
+                <div class="channel-desc">매일 새벽 03:00 정시 큐티 3종 자동 발송</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-qt" value="-1004304461870" onchange="syncChatId('qt', this.value); markDirty();">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: Telegram (5 Channels Grid) ── -->
+    <div id="page-telegram" class="page">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between;">
+        <span>📱 알림이 발송되는 5개 텔레그램 채팅방의 Chat ID를 한 화면에서 관리합니다.</span>
+        <span style="font-size:11.5px;color:var(--text3);">💡 Chat ID는 @userinfobot 에서 확인 가능</span>
+      </div>
+
+      <div class="channel-grid">
+        <!-- 1) 항공 보도자료 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background:linear-gradient(90deg,#4f9cf9,#8b5cf6)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(79,156,249,0.15);">✈️</div>
+              <div>
+                <div class="channel-name">[항공 보도자료]</div>
+                <div class="channel-desc">우주항공청 + 국토교통부(항공) 보도자료</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-aero2" value="-1004303018302" onchange="syncChatId('aero', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 2) 일반 유튜브 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background:linear-gradient(90deg,#ef4444,#f59e0b)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(239,68,68,0.15);">📺</div>
+              <div>
+                <div class="channel-name">[유튜브] 관심 영상 알림</div>
+                <div class="channel-desc">등록된 일반 유튜브 채널 신규 영상</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-media2" value="-1003965956256" onchange="syncChatId('media', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 3) AI 유튜브 영상 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background:linear-gradient(90deg,#8b5cf6,#ec4899)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(139,92,246,0.15);">🎬</div>
+              <div>
+                <div class="channel-name">[AI] 유투브 영상</div>
+                <div class="channel-desc">AI 전용 유튜브 채널 신규 영상 알림</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-ai_yt2" value="-1003849449000" onchange="syncChatId('ai_yt', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 4) AI 관심자료 (뉴스) -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background:linear-gradient(90deg,#06b6d4,#3b82f6)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(6,182,212,0.15);">📰</div>
+              <div>
+                <div class="channel-name">[AI] 관심자료 (뉴스)</div>
+                <div class="channel-desc">AI 전문 소식지 및 테크 웹진 기사</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-ai_news2" value="-1003755390083" onchange="syncChatId('ai_news', this.value); markDirty();">
+          </div>
+        </div>
+
+        <!-- 5) QT 복있는 사람 -->
+        <div class="channel-card">
+          <div class="accent-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+          <div class="channel-card-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="channel-icon" style="background:rgba(16,185,129,0.15);">📖</div>
+              <div>
+                <div class="channel-name">[QT] 복있는 사람</div>
+                <div class="channel-desc">매일 새벽 큐티 묵상 3종 자동 발송</div>
+              </div>
+            </div>
+            <span class="channel-badge badge-active">● 활성</span>
+          </div>
+          <div class="channel-id">
+            <span>Chat ID:</span>
+            <input type="text" id="chatid-qt2" value="-1004304461870" onchange="syncChatId('qt', this.value); markDirty();">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: YouTube ── -->
+    <div id="page-youtube" class="page">
+      <div class="section-header" style="margin-bottom:8px;">
+        <div>
+          <div class="section-title">▶️ 유튜브 채널 관리</div>
+          <div style="font-size:12px;color:var(--text2);font-weight:600;">등록된 채널에 새 영상이 올라오면 [유튜브] 채팅방으로 알림이 발송됩니다.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddYT('media')">+ 유튜브 채널 추가</button>
+      </div>
+      <div class="yt-list" id="ytList"></div>
+    </div>
+
+    <!-- ── PAGE: Press ── -->
+    <div id="page-press" class="page">
+      <div style="background:linear-gradient(145deg, #fff7fa 0%, #ffeaf3 100%); border:1.5px solid var(--border2); border-radius:14px; padding:14px 18px; margin-bottom:12px; box-shadow:0 3px 12px rgba(255,100,160,0.08);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">🏛️</span>
+            <div>
+              <div style="font-size:15px; font-weight:800; color:var(--text);">대한민국 공공데이터포털 정책브리핑 OpenAPI v2 연동</div>
+              <div style="font-size:11.5px; color:var(--text2); font-weight:600;">정책뉴스 OpenAPI (해외 IP 차단 방지) 및 korea.kr Fallback 크롤링 2중 수집 체계</div>
+            </div>
+          </div>
+          <span class="channel-badge badge-active" style="font-size:11px;">● 연동 활성화</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div style="flex:1;">
+            <div style="font-size:11.5px; font-weight:700; color:var(--text2); margin-bottom:4px;">🔑 공공데이터포털 일반 인증키 (Service Key)</div>
+            <input type="text" id="dataGoKrKey" class="form-input" style="padding:6px 12px; font-size:12.5px; font-family:monospace;" placeholder="인증키를 입력하세요" onchange="markDirty()">
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="saveAll()" style="margin-top:18px; padding:7px 14px; white-space:nowrap;">💾 키 저장</button>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:8px;">
+        <div>
+          <div class="section-title">📋 보도자료 수집 대상 부처</div>
+          <div style="font-size:12px;color:var(--text2);font-weight:600;">OpenAPI 및 정책브리핑에서 신규 보도자료를 수집하여 [항공 보도자료] 채팅방으로 발송합니다.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openAddPress()">+ 부처 추가</button>
+      </div>
+      <div class="press-list" id="pressList"></div>
+    </div>
+
+    <!-- ── PAGE: QT ── -->
+    <div id="page-qt" class="page">
+      <!-- 즉시 발송 액션 카드 -->
+      <div style="background:linear-gradient(135deg, #e8f5e9, #c8e6c9);border:1.5px solid #81c784;border-radius:16px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 14px rgba(46,125,50,0.12)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:32px">⚡️</span>
+          <div>
+            <div style="font-size:16.5px;font-weight:800;color:#1b5e20">오늘의 큐티 즉시 발송 테스트</div>
+            <div style="font-size:13px;color:#2e7d32;font-weight:600;margin-top:2px">오늘 날짜의 묵상 이미지 3종(어른용·어린이용·키즈용)을 [QT] 텔레그램 채팅방으로 즉시 전송합니다.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnSendQTPage" onclick="sendQTDirect()" style="background:linear-gradient(135deg, #2e7d32, #1b5e20);border:none;padding:12px 22px;font-size:14.5px;font-weight:800;white-space:nowrap;box-shadow:0 3px 12px rgba(46,125,50,0.35);cursor:pointer;">
+          📖 큐티 즉시 발송하기
+        </button>
+      </div>
+
+      <!-- QT 메인 카드 -->
+      <div class="qt-card" style="border: 2px solid var(--border2);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#ff6eb4,#e91e8c);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;box-shadow:0 4px 12px rgba(255,105,180,0.35)">📖</div>
+            <div>
+              <div class="section-title">큐티 (QT) 말씀 배송 설정</div>
+              <div style="font-size:13px;color:var(--text2);margin-top:3px;font-weight:600;">매일 새벽 『복있는 사람』 묵상 이미지를 [QT] 채팅방으로 자동 발송합니다.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px;font-weight:700;color:var(--text2)">QT 기능 활성화</span>
+            <label class="toggle">
+              <input type="checkbox" id="qtEnabled" checked onchange="markDirty()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 발송 시각 카드 -->
+        <div style="background:#ffddef;border:1.5px solid var(--border);border-radius:16px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:26px">🌅</span>
+            <div>
+              <div style="font-size:16px;font-weight:800;color:var(--text)">매일 새벽 발송 시각</div>
+              <div style="font-size:13px;color:var(--text2);font-weight:600">정각 트래픽 분산을 위해 분 단위까지 정밀하게 설정됩니다. (기본: 새벽 3시 33분)</div>
+            </div>
+          </div>
+          <div class="qt-time-row" style="margin-top:0; gap:8px;">
+            <span style="font-size:15px;font-weight:700;color:var(--text2)">새벽</span>
+            <input type="number" class="qt-time-input" id="qtHour" value="3" min="0" max="23" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
+            <span style="font-size:16px;font-weight:800;color:var(--text)">시</span>
+            <input type="number" class="qt-time-input" id="qtMin" value="33" min="0" max="59" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
+            <span style="font-size:16px;font-weight:800;color:var(--text)">분</span>
+          </div>
+        </div>
+
+        <!-- 발송 대상 리스트 -->
+        <div style="margin-top:20px">
+          <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:12px">📚 발송할 큐티 항목</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            
+            <div style="background:linear-gradient(145deg, #fff7fa, #ffeaf3);border:1.5px solid var(--border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span style="font-size:22px">📕</span>
+                <div>
+                  <div style="font-size:16px;font-weight:800;color:var(--text)">어른용 (복있는 사람 A)</div>
+                  <div style="font-size:13px;color:var(--text2);font-weight:500">성인 성도를 위한 깊이 있는 본문 묵상 및 해설</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+
+            <div style="background:linear-gradient(145deg, #fff7fa, #ffeaf3);border:1.5px solid var(--border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span style="font-size:22px">📗</span>
+                <div>
+                  <div style="font-size:16px;font-weight:800;color:var(--text)">어린이용 (복있는 사람 C)</div>
+                  <div style="font-size:13px;color:var(--text2);font-weight:500">초등학생 자녀를 위한 눈높이 말씀 및 활동</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+
+            <div style="background:linear-gradient(145deg, #fff7fa, #ffeaf3);border:1.5px solid var(--border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span style="font-size:22px">📘</span>
+                <div>
+                  <div style="font-size:16px;font-weight:800;color:var(--text)">키즈용 (복있는 사람 D)</div>
+                  <div style="font-size:13px;color:var(--text2);font-weight:500">유아·유치부 아이들을 위한 쉬운 그림 성경</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div style="background:linear-gradient(135deg, #fff0f7, #ffddec);border:1.5px solid rgba(255,110,180,0.35);border-radius:14px;padding:16px 20px;font-size:13px;color:var(--text2);font-weight:600;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">💡</span>
+        <span>새벽 3시 33분에 [QT] 텔레그램 채팅방으로 묵상 이미지 3종(어른·어린이·키즈)이 자동 발송됩니다.</span>
+      </div>
+    </div>
+
+    <!-- ── PAGE: AI ── -->
+    <div id="page-ai" class="page">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span class="ai-badge">✨ AI 2개 전용 채널 분리 운영</span>
+        <span style="font-size:14px;color:var(--text2);font-weight:600">AI 유튜브 영상과 AI 테크 뉴스를 각자의 전용 채널로 분리하여 전달합니다.</span>
+      </div>
+
+      <div class="step-guide">
+        <div class="step-guide-title">🚀 AI 채널 운영 안내</div>
+        <ul class="step-list">
+          <li><span class="step-num">1</span> 🎬 <strong>[AI] 유투브 영상</strong>: AI 전문 영상 전용 (<code style="font-size:11.5px; color:#c2185b;">-1003849449000</code>)</li>
+          <li><span class="step-num">2</span> 📰 <strong>[AI] 관심자료</strong>: AI 소식지·테크 뉴스 전용 (<code style="font-size:11.5px; color:#c2185b;">-1003755390083</code>)</li>
+        </ul>
+      </div>
+
+      <div class="section-header">
+        <div>
+          <div class="section-title">🎬 AI 유튜브 채널 목록</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:4px;font-weight:600;">새 영상이 올라오면 [AI] 유투브 영상 채팅방으로 즉시 발송됩니다. (YouTube Data API v3 정밀 수집)</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddYT('ai')">+ AI 채널 추가</button>
+      </div>
+      <div class="yt-list" id="ytListAI2"></div>
+
+      <div class="divider" style="margin: 24px 0;"></div>
+
+      <!-- ── AI 전문 소식지 / 테크 웹진 ── -->
+      <div class="section-header">
+        <div>
+          <div class="section-title">📰 AI 최신 소식지 / 테크 웹진</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:4px;font-weight:600;">최신 생성형 AI 기술 동향 및 글로벌 테크 브리핑 기사를 [AI] 관심자료(뉴스) 채팅방으로 전달합니다.</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddAINews()">+ 소식지 추가</button>
+      </div>
+      <div class="press-list" id="aiNewsList"></div>
+    </div>
+
+    <!-- ── PAGE: Export / Cloud Control ── -->
+    <div id="page-export" class="page">
+      
+      <!-- ☁️ Google Cloud 24h 관제 센터 카드 -->
+      <div style="background: linear-gradient(145deg, #fff7fa 0%, #ffeaf3 100%); border: 2.5px solid var(--border2); border-radius: 22px; padding: 24px 26px; margin-bottom: 24px; box-shadow: 0 6px 25px rgba(255,100,160,0.15);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:28px;">☁️</span>
+            <div>
+              <div style="font-size:18px; font-weight:800; color:var(--text);">Google Cloud 무중단 24h 파이프라인 관제</div>
+              <div style="font-size:13px; color:var(--text2); font-weight:600;">Cloud Functions + Cloud Scheduler가 1개 스케줄러로 24시간 365일 5개 채널을 완전 자동화합니다.</div>
+            </div>
+          </div>
+          <span class="ai-badge" style="background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7;">● 24시간 가동 중</span>
+        </div>
+
+        <!-- Cloud Endpoint & Status Box -->
+        <div style="background:#ffddef; border:1.5px solid var(--border); border-radius:14px; padding:16px 20px; margin-bottom:18px;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:var(--text2); margin-bottom:4px;">🌐 Cloud Functions 엔드포인트 URL</div>
+              <div style="background:#fff2f8; padding:8px 12px; border-radius:8px; font-family:monospace; font-size:12.5px; font-weight:700; color:#c2185b; border:1px solid var(--border); word-break:break-all;">
+                https://telegram-alert-bot-80500727934.asia-northeast3.run.app
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12px; font-weight:800; color:var(--text2); margin-bottom:4px;">⏰ Cloud Scheduler (1개 통합 운영)</div>
+              <div style="background:#fff2f8; padding:8px 12px; border-radius:8px; font-family:monospace; font-size:12.5px; font-weight:700; color:#047857; border:1px solid var(--border);">
+                telegram-hourly-job (0 * * * *, KST)
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--text2); font-weight:600;">
+            <span>💡 1시간마다 신규 영상·보도자료를 자동 수집하며, 매일 새벽 3시에는 오늘의 큐티 3종을 자동 감지 발송합니다.</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="triggerCloudBot('HOURLY')" style="padding:12px 22px; font-size:14.5px; font-weight:800; box-shadow:0 4px 16px rgba(233,30,140,0.35);">
+            ⚡️ 지금 즉시 봇 실행 (HOURLY 수집)
+          </button>
+          <button class="btn btn-secondary" onclick="sendQTDirect()" style="background:#fff; border:2px solid #10b981; color:#047857; padding:12px 20px; font-size:14.5px; font-weight:800;">
+            📖 큐티 즉시 발송 (QT 모드)
+          </button>
+          <a href="https://console.cloud.google.com/cloudscheduler" target="_blank" class="btn btn-secondary" style="padding:12px 16px; font-size:13.5px; font-weight:700; text-decoration:none;">
+            ⏰ Cloud Scheduler 콘솔
+          </a>
+          <a href="https://console.cloud.google.com/run" target="_blank" class="btn btn-secondary" style="padding:12px 16px; font-size:13.5px; font-weight:700; text-decoration:none;">
+            ☁️ Cloud Run 콘솔
+          </a>
+        </div>
+        <div id="cloudStatusLog" style="margin-top:14px; font-size:13px; font-weight:700; color:var(--text2); background:rgba(255,255,255,0.7); padding:10px 14px; border-radius:10px; border:1px solid var(--border); min-height:38px; display:flex; align-items:center;">
+          ⚡️ [준비 완료] 버튼을 누르면 Google Cloud 엔드포인트를 호출하여 즉시 텔레그램 알림을 발송합니다.
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 배포용 코드 백업 및 수동 관리 -->
+      <div class="section-header">
+        <div>
+          <div class="section-title">📋 배포용 Python 코드 (main.py) 생성 및 내보내기</div>
+          <div style="font-size:13px; color:var(--text2); margin-top:4px; font-weight:600;">현재 대시보드 설정을 바탕으로 최신 main.py 코드를 자동 생성합니다.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <button class="btn btn-primary" onclick="generateCode()">🔄 최신 코드 생성</button>
+        <button class="btn btn-secondary" id="copyBtn" onclick="copyCode()" disabled>📋 클립보드 복사</button>
+      </div>
+
+      <div class="code-block" id="codeOutput">← "최신 코드 생성" 버튼을 클릭하세요</div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ════════════ MODALS ════════════ -->
+<!-- Add YouTube Modal -->
+<div class="modal-overlay" id="modalAddYT">
+  <div class="modal">
+    <div class="modal-title">▶️ 유튜브 채널 추가</div>
+    <div class="modal-sub">채널 이름과 Channel ID를 입력하세요</div>
+    <div class="form-group">
+      <label class="form-label">채널 이름 *</label>
+      <input class="form-input" id="newYTName" placeholder="예: 선두교회" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Channel ID *</label>
+      <input class="form-input" id="newYTId" placeholder="UCxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">프로필 사진 URL (선택)</label>
+      <input class="form-input" id="newYTAvatar" placeholder="https://yt3.googleusercontent.com/..." />
+    </div>
+    <div class="form-group">
+      <label class="form-label">발송 채널</label>
+      <select class="form-input" id="newYTTarget">
+        <option value="media">📺 [유튜브] 관심 영상 알림</option>
+        <option value="ai">🎬 [AI] 유투브 영상</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddYT')">취소</button>
+      <button class="btn btn-primary" onclick="addYTChannel()">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Press Modal -->
+<div class="modal-overlay" id="modalAddPress">
+  <div class="modal">
+    <div class="modal-title">📋 보도자료 부처 추가</div>
+    <div class="modal-sub">korea.kr 정책브리핑에서 모니터링할 부처를 추가합니다</div>
+    <div class="form-group">
+      <label class="form-label">부처명 *</label>
+      <input class="form-input" id="newPressName" placeholder="예: 과학기술정보통신부" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">repCode * (korea.kr 부처 코드)</label>
+      <input class="form-input" id="newPressCode" placeholder="예: B00001" />
+      <div class="form-hint">💡 korea.kr/briefing/pressReleaseList.do 에서 부처 선택 후 URL의 repCode 값 복사</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">필터</label>
+      <select class="form-input" id="newPressFilter">
+        <option value="none">전체 수집 (필터 없음)</option>
+        <option value="aviation">항공 키워드 필터</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddPress')">취소</button>
+      <button class="btn btn-primary" onclick="addPressTarget()">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add AI News Modal -->
+<div class="modal-overlay" id="modalAddAINews">
+  <div class="modal">
+    <div class="modal-title">📰 AI 소식지 / 웹진 추가</div>
+    <div class="modal-sub">모니터링할 AI 소식지 이름과 웹사이트 URL을 입력하세요</div>
+    <div class="form-group">
+      <label class="form-label">소식지 이름 *</label>
+      <input class="form-input" id="newAINewsName" placeholder="예: GeekNews AI" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">웹사이트 URL *</label>
+      <input class="form-input" id="newAINewsURL" placeholder="예: https://news.hada.io" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">설명 (선택)</label>
+      <input class="form-input" id="newAINewsDesc" placeholder="예: 개발자 및 최신 AI 테크 브리핑" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddAINews')">취소</button>
+      <button class="btn btn-primary" onclick="addAINewsTarget()">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span>✅</span>
+  <span id="toastMsg">저장되었습니다</span>
+</div>
+
+<script>
+// ════════════ STATE ════════════
+let state = {
+  botToken: '8657720717:AAEZm4nKIge58bfJ0n56nruQ05GAnR0KWXY',
+  dataGoKrKey: '242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627',
+  youtubeApiKey: 'AIzaSyAbqWqwaU8fAKM15_wcdVT7Aoo1ohT22x0',
+  chatIds: {
+    aero:    '-1004303018302',
+    media:   '-1003965956256',
+    qt:      '-1004304461870',
+    ai_news: '-1003755390083',
+    ai_yt:   '-1003849449000'
+  },
+  youtubeChannels: [
+    {
+      name: '선두교회',
+      id: 'UCij1EEaODLVz87fJfZYOLHg',
+      enabled: true,
+      target: 'media',
+      avatar: 'assets/sundoo.png'
+    },
+    {
+      name: '새롭게하소서CBS',
+      id: 'UCqCqf21juyyL_8peGs2CWGg',
+      enabled: true,
+      target: 'media',
+      avatar: 'assets/saeropge.png'
+    },
+    {
+      name: '이성미의못간다',
+      id: 'UCTzsQpcxRWPC_gmDOqylaWw',
+      enabled: true,
+      target: 'media',
+      avatar: 'assets/leeseongmi.png'
+    },
+    {
+      name: '교회는 안 다니는데 궁금은 하네요',
+      id: 'UCzhoPJDYg_5ccq0PAYuMAxQ',
+      enabled: true,
+      target: 'media',
+      avatar: 'https://yt3.googleusercontent.com/HJXeAdyeLA9J07cjMcspI4ugjaTh0EktkOI4_UpLO_-Dh51J3t3aVCrBbXxAPTibf7zwvJUc6g=s900-c-k-c0x00ffffff-no-rj'
+    },
+    {
+      name: '레인 | AI 바이브코딩',
+      id: 'UCc3-QWjpSyx7D_x7kh3TdgQ',
+      enabled: true,
+      target: 'ai',
+      avatar: 'https://yt3.googleusercontent.com/DJyHMtsGR6gphnpT3JXnQ8HoZxaVVQdn-w3kqOFczXbE1TWbiyhnFIfWGgZ93rUmlHx31NkfDA=s900-c-k-c0x00ffffff-no-rj'
+    }
+  ],
+  pressTargets: [
+    { name:'우주항공청', repCode:'B00026', filter:'none',     enabled:true },
+    { name:'국토교통부', repCode:'A00006', filter:'aviation', enabled:true }
+  ],
+  aiNewsletters: [
+    { name: 'AI타임스', desc: '국내 최신 생성형 AI 및 테크 산업 동향', url: 'https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1', enabled: true },
+    { name: 'MIT Technology Review', desc: '글로벌 핵심 AI 테크 분석 브리핑', url: 'https://www.technologyreview.com/topic/artificial-intelligence/', enabled: true }
+  ],
+  qt: { enabled:true, hour:3, minute:33 }
+};
+
+let dirty = false;
+let addYTTarget = 'media';
+
+// ════════════ LOAD / SAVE ════════════
+function loadState() {
+  const saved = localStorage.getItem('tg_dashboard_state');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.chatIds) {
+        if (!parsed.chatIds.ai) parsed.chatIds.ai = '-1003755390083';
+      }
+      if (parsed.qt) {
+        if (parsed.qt.hour === undefined) parsed.qt.hour = 3;
+        if (parsed.qt.minute === undefined) parsed.qt.minute = 33;
+      }
+      if (parsed.dataGoKrKey) {
+        state.dataGoKrKey = parsed.dataGoKrKey;
+      }
+      if (!parsed.aiNewsletters || parsed.aiNewsletters.length === 0) {
+        parsed.aiNewsletters = [
+          { name: 'AI타임스', desc: '국내 최신 생성형 AI 및 테크 산업 동향', url: 'https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1', enabled: true },
+          { name: 'MIT Technology Review', desc: '글로벌 핵심 AI 테크 분석 브리핑', url: 'https://www.technologyreview.com/topic/artificial-intelligence/', enabled: true }
+        ];
+      }
+      // Ensure custom avatars
+      if (parsed.youtubeChannels) {
+        parsed.youtubeChannels.forEach(ch => {
+          if (ch.name === '선두교회') ch.avatar = 'assets/sundoo.png';
+          if (ch.name === '새롭게하소서CBS') ch.avatar = 'assets/saeropge.png';
+          if (ch.name.includes('이성미')) ch.avatar = 'assets/leeseongmi.png';
+          if (ch.name === '교회는 안 다니는데 궁금은 하네요' && !ch.avatar) ch.avatar = 'https://yt3.googleusercontent.com/HJXeAdyeLA9J07cjMcspI4ugjaTh0EktkOI4_UpLO_-Dh51J3t3aVCrBbXxAPTibf7zwvJUc6g=s900-c-k-c0x00ffffff-no-rj';
+          if (ch.name === '레인 | AI 바이브코딩' && !ch.avatar) ch.avatar = 'https://yt3.googleusercontent.com/DJyHMtsGR6gphnpT3JXnQ8HoZxaVVQdn-w3kqOFczXbE1TWbiyhnFIfWGgZ93rUmlHx31NkfDA=s900-c-k-c0x00ffffff-no-rj';
+        });
+      }
+      if (parsed.pressTargets) {
+        parsed.pressTargets.forEach(p => {
+          if (p.name === '국토교통부' && p.repCode === 'B00007') {
+            p.repCode = 'A00006';
+          }
+        });
+      }
+      state = parsed;
+    } catch(e) {}
+  }
+
+  // Populate QT inputs
+  const elHour = document.getElementById('qtHour');
+  const elMin  = document.getElementById('qtMin');
+  const elQtEn = document.getElementById('qtEnabled');
+  if (elHour) elHour.value = state.qt.hour !== undefined ? state.qt.hour : 3;
+  if (elMin)  elMin.value  = state.qt.minute !== undefined ? state.qt.minute : 33;
+  if (elQtEn) elQtEn.checked = state.qt.enabled !== undefined ? state.qt.enabled : true;
+
+  // Populate API key input
+  const elApiKey = document.getElementById('dataGoKrKey');
+  if (elApiKey) elApiKey.value = state.dataGoKrKey || '242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627';
+
+  // Sync inputs with loaded state
+  ['aero','media','qt','ai_news','ai_yt'].forEach(k => {
+    const el1 = document.getElementById('chatid-' + k);
+    const el2 = document.getElementById('chatid-' + k + '2');
+    const val = state.chatIds[k] || '';
+    if (el1) el1.value = val;
+    if (el2) el2.value = val;
+  });
+}
+
+function saveAll() {
+  // Sync chat IDs from inputs or preserve existing
+  ['aero','media','qt','ai_news','ai_yt'].forEach(k => {
+    const el = document.getElementById('chatid-' + k) || document.getElementById('chatid-' + k + '2');
+    if (el && el.value) state.chatIds[k] = el.value.trim();
+  });
+  const elApiKey = document.getElementById('dataGoKrKey');
+  if (elApiKey && elApiKey.value) state.dataGoKrKey = elApiKey.value.trim();
+
+  state.qt.enabled = document.getElementById('qtEnabled').checked;
+  state.qt.hour    = parseInt(document.getElementById('qtHour').value) || 3;
+  state.qt.minute  = parseInt(document.getElementById('qtMin').value) || 33;
+
+  localStorage.setItem('tg_dashboard_state', JSON.stringify(state));
+  document.getElementById('lastModified').textContent = new Date().toLocaleTimeString('ko-KR');
+  dirty = false;
+  showToast('설정이 저장되었습니다 ✨');
+  renderAll();
+}
+
+function markDirty() { dirty = true; }
+
+// ════════════ RENDER ════════════
+function renderAll() {
+  renderYTList();
+  renderPressList();
+  renderAINewsList();
+  updateStats();
+}
+
+function renderAINewsList() {
+  const el = document.getElementById('aiNewsList');
+  if (!el) return;
+  if (!state.aiNewsletters || state.aiNewsletters.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📭</div>등록된 AI 소식지가 없습니다.<br><br><button class="btn btn-secondary btn-sm" onclick="openAddAINews()">+ 소식지 추가</button></div>`;
+    return;
+  }
+  const icons = { 'AI타임스':'📰', 'MIT Technology Review':'🌐' };
+  el.innerHTML = state.aiNewsletters.map((n, i) => `
+    <div class="press-item">
+      <div class="press-icon" style="background:rgba(233,30,140,0.12)">${icons[n.name] || '📰'}</div>
+      <div class="press-info">
+        <div class="press-name">
+          ${n.name}
+          <span class="filter-tag tag-all">AI 소식지</span>
+        </div>
+        <div class="press-meta">${n.desc || n.url}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" ${n.enabled?'checked':''} onchange="toggleAINews(${i},this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">${n.enabled?'ON':'OFF'}</span>
+        </div>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="removeAINews(${i})" title="삭제">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleAINews(idx, enabled) {
+  state.aiNewsletters[idx].enabled = enabled;
+  renderAINewsList();
+  markDirty();
+}
+
+function removeAINews(idx) {
+  if (!confirm(`"${state.aiNewsletters[idx].name}" 소식지를 삭제할까요?`)) return;
+  state.aiNewsletters.splice(idx, 1);
+  renderAINewsList();
+  markDirty();
+  showToast('AI 소식지가 삭제되었습니다');
+}
+
+function openAddAINews() {
+  document.getElementById('newAINewsName').value = '';
+  document.getElementById('newAINewsURL').value = '';
+  document.getElementById('newAINewsDesc').value = '';
+  openModal('modalAddAINews');
+}
+
+function addAINewsTarget() {
+  const name = document.getElementById('newAINewsName').value.trim();
+  const url  = document.getElementById('newAINewsURL').value.trim();
+  const desc = document.getElementById('newAINewsDesc').value.trim();
+  if (!name || !url) { alert('소식지 이름과 웹사이트 URL을 모두 입력해주세요'); return; }
+  state.aiNewsletters.push({ name, url, desc: desc || url, enabled: true });
+  closeModal('modalAddAINews');
+  renderAINewsList();
+  markDirty();
+  showToast(`"${name}" 소식지가 추가되었습니다 ✨`);
+}
+
+function renderYTList() {
+  const media = state.youtubeChannels.filter(c => c.target === 'media');
+  const ai    = state.youtubeChannels.filter(c => c.target === 'ai');
+
+  const targets = [
+    { id: 'ytList', list: media, type: 'media', emptyText: '등록된 유튜브 채널이 없습니다' },
+    { id: 'ytListAI2', list: ai, type: 'ai', emptyText: '등록된 AI 유튜브 채널이 없습니다' }
+  ];
+
+  targets.forEach(({ id, list, type, emptyText }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (list.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="icon">📭</div>${emptyText}<br><br><button class="btn btn-secondary btn-sm" onclick="openAddYT('${type}')">+ 채널 추가</button></div>`;
+    } else {
+      el.innerHTML = list.map(ch => {
+        const idx = state.youtubeChannels.indexOf(ch);
+        const avatarImg = ch.avatar ?
+          `<img src="${ch.avatar}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid var(--border2); box-shadow:0 2px 8px rgba(233,30,140,0.2);" alt="${ch.name}" onerror="this.outerHTML='<div style=\\\'width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ff6eb4,#e91e8c);display:flex;align-items:center;justify-content:center;font-size:18px;color:white;\\\'>▶️</div>'">` :
+          `<div style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#ff6eb4,#e91e8c); display:flex; align-items:center; justify-content:center; font-size:18px; color:white;">▶️</div>`;
+        return `
+        <div class="yt-item" id="yt-item-${idx}">
+          <div class="yt-info" style="display:flex; align-items:center; gap:12px;">
+            ${avatarImg}
+            <span class="yt-name" style="font-size:14.5px; font-weight:800; color:var(--text);">${ch.name}</span>
+          </div>
+          <div class="yt-actions">
+            <div class="toggle-wrap">
+              <label class="toggle">
+                <input type="checkbox" ${ch.enabled?'checked':''} onchange="toggleYT(${idx},this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">${ch.enabled?'ON':'OFF'}</span>
+            </div>
+            <button class="btn btn-danger btn-sm btn-icon" onclick="removeYT(${idx})" title="삭제">🗑</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  });
+}
+
+function renderPressList() {
+  const el = document.getElementById('pressList');
+  if (!el) return;
+  const icons = { '우주항공청':'🚀', '국토교통부':'🏗' };
+  el.innerHTML = state.pressTargets.map((p, i) => `
+    <div class="press-item">
+      <div class="press-icon" style="background:rgba(79,156,249,0.1)">${icons[p.name] || '🏛'}</div>
+      <div class="press-info">
+        <div class="press-name">
+          ${p.name}
+          <span class="filter-tag ${p.filter==='none'?'tag-all':'tag-filter'}">
+            ${p.filter==='none'?'전체 수집':'항공 필터'}
+          </span>
+        </div>
+        <div class="press-meta">repCode: ${p.repCode} · korea.kr 정책브리핑</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" ${p.enabled?'checked':''} onchange="togglePress(${i},this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">${p.enabled?'ON':'OFF'}</span>
+        </div>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="removePress(${i})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-tg').textContent = 4;
+  document.getElementById('stat-yt').textContent = state.youtubeChannels.filter(c=>c.enabled).length;
+  document.getElementById('stat-press').textContent = state.pressTargets.filter(p=>p.enabled).length;
+}
+
+// ════════════ YOUTUBE ════════════
+function openAddYT(target = 'media') {
+  addYTTarget = target;
+  document.getElementById('newYTName').value = '';
+  document.getElementById('newYTId').value = '';
+  document.getElementById('newYTTarget').value = target;
+  openModal('modalAddYT');
+}
+function addYTChannel() {
+  const name = document.getElementById('newYTName').value.trim();
+  const id   = document.getElementById('newYTId').value.trim();
+  const target = document.getElementById('newYTTarget').value;
+  if (!name || !id) { alert('이름과 Channel ID를 모두 입력해주세요'); return; }
+  if (!id.startsWith('UC') || id.length !== 24) {
+    if (!confirm('Channel ID 형식이 일반적이지 않습니다 (UC로 시작하는 24자). 그래도 추가할까요?')) return;
+  }
+  state.youtubeChannels.push({ name, id, enabled:true, target, avatar:'' });
+  closeModal('modalAddYT');
+  renderAll();
+  markDirty();
+  showToast(`"${name}" 채널이 추가되었습니다`);
+}
+function removeYT(idx) {
+  if (!confirm(`"${state.youtubeChannels[idx].name}" 채널을 삭제할까요?`)) return;
+  state.youtubeChannels.splice(idx, 1);
+  renderAll();
+  markDirty();
+  showToast('채널이 삭제되었습니다');
+}
+function toggleYT(idx, val) {
+  state.youtubeChannels[idx].enabled = val;
+  markDirty();
+  renderAll();
+}
+
+// ════════════ PRESS ════════════
+function openAddPress() {
+  document.getElementById('newPressName').value = '';
+  document.getElementById('newPressCode').value = '';
+  openModal('modalAddPress');
+}
+function addPressTarget() {
+  const name   = document.getElementById('newPressName').value.trim();
+  const code   = document.getElementById('newPressCode').value.trim();
+  const filter = document.getElementById('newPressFilter').value;
+  if (!name || !code) { alert('부처명과 repCode를 입력해주세요'); return; }
+  state.pressTargets.push({ name, repCode:code, filter, enabled:true });
+  closeModal('modalAddPress');
+  renderAll();
+  markDirty();
+  showToast(`"${name}" 보도자료 수집이 추가되었습니다`);
+}
+function removePress(idx) {
+  if (!confirm(`"${state.pressTargets[idx].name}" 보도자료 수집을 삭제할까요?`)) return;
+  state.pressTargets.splice(idx, 1);
+  renderAll();
+  markDirty();
+}
+function togglePress(idx, val) {
+  state.pressTargets[idx].enabled = val;
+  markDirty();
+  renderAll();
+}
+
+// ════════════ CHAT ID SYNC ════════════
+function syncChatId(key, val) {
+  state.chatIds[key] = val.trim();
+  const el1 = document.getElementById('chatid-' + key);
+  const el2 = document.getElementById('chatid-' + key + '2');
+  if (el1) el1.value = val.trim();
+  if (el2) el2.value = val.trim();
+}
+
+// ════════════ CODE EXPORT ════════════
+function generateCode() {
+  const chatIds = {
+    aero:    document.getElementById('chatid-aero')?.value    || state.chatIds.aero,
+    media:   document.getElementById('chatid-media')?.value   || state.chatIds.media,
+    qt:      document.getElementById('chatid-qt')?.value      || state.chatIds.qt,
+    ai_news: document.getElementById('chatid-ai_news')?.value || state.chatIds.ai_news,
+    ai_yt:   document.getElementById('chatid-ai_yt')?.value   || state.chatIds.ai_yt,
+  };
+  const apiKey = state.dataGoKrKey || '242f60fdc4a357127a300e1ba345bc083301293cdc89cf85146c1dbfaeec4627';
+
+  const mediaChannels = state.youtubeChannels.filter(c => c.enabled && c.target === 'media');
+  const aiChannels    = state.youtubeChannels.filter(c => c.enabled && c.target === 'ai');
+  const pressTargets  = state.pressTargets.filter(p => p.enabled);
+
+  const ytMediaLines = mediaChannels.map(c =>
+    `    {"name": "${c.name}", "channel_id": "${c.id}"},`
+  ).join('\n');
+  const ytAILines = aiChannels.map(c =>
+    `    {"name": "${c.name}", "channel_id": "${c.id}"},`
+  ).join('\n');
+  const aiNewsTargets = (state.aiNewsletters || []).filter(n => n.enabled);
+  const aiNewsLines   = aiNewsTargets.map(n =>
+    `    {"name": "${n.name}", "url": "${n.url}", "enabled": True},`
+  ).join('\n');
+  const pressLines = pressTargets.map(p =>
+    `    {"name": "${p.name}", "rep_code": "${p.repCode}", "filter": "${p.filter}", "enabled": True},`
+  ).join('\n');
+
+  const code = `# ============================================================
+# 텔레그램 알림 봇 — 자동 생성 코드 (Google Cloud / Local 동시 지원)
+# 생성 시각: ${new Date().toLocaleString('ko-KR')}
+# ============================================================
+import os, sys, json, re, time, requests, xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
+from datetime import datetime, timezone, timedelta
+
+BOT_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN") or "${state.botToken}"
+DEFAULT_CHAT_ID  = os.environ.get("TELEGRAM_CHAT_ID", "")
+CHAT_ID_AERO     = "${chatIds.aero}"    or DEFAULT_CHAT_ID
+CHAT_ID_MEDIA    = "${chatIds.media}"   or DEFAULT_CHAT_ID
+CHAT_ID_QT       = "${chatIds.qt}"      or DEFAULT_CHAT_ID
+CHAT_ID_AI_NEWS  = "${chatIds.ai_news}" or DEFAULT_CHAT_ID
+CHAT_ID_AI_YT    = "${chatIds.ai_yt}"   or DEFAULT_CHAT_ID
+
+DATA_GO_KR_KEY  = os.environ.get("DATA_GO_KR_KEY", "${apiKey}")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "AIzaSyAbqWqwaU8fAKM15_wcdVT7Aoo1ohT22x0")
+
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+HISTORY_FILE = os.path.join(BASE_DIR, "sent_history.json")
+WEEKDAYS_KO  = ["월","화","수","목","금","토","일"]
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+
+# ── 유튜브 채널 ([유튜브] 채널 발송) ──
+YOUTUBE_MEDIA = [
+${ytMediaLines}
+]
+
+# ── AI 유튜브 채널 ([AI] 채널 발송) ──
+YOUTUBE_AI = [
+${ytAILines}
+]
+
+# ── AI 전문 소식지 ([AI] 채널 발송) ──
+AI_NEWSLETTERS = [
+${aiNewsLines}
+]
+
+# ── 보도자료 부처 ──
+PRESS_TARGETS = [
+${pressLines}
+]
+
+AVIATION_KEYWORDS = [
+    # 1. 전국 공항 및 신공항
+    "공항", "신공항", "국제공항", "가덕도", "가덕도신공항", "인천공항", "인천국제공항", "김포공항", "김포국제공항",
+    "김해공항", "김해국제공항", "제주공항", "제주국제공항", "대구공항", "대구경북신공항", "TK신공항", "청주공항",
+    "청주국제공항", "무안공항", "무안국제공항", "양양공항", "양양국제공항", "광주공항", "여수공항", "포항경주공항",
+    "울산공항", "사천공항", "군산공항", "원주공항", "제주제2공항", "울릉공항", "흑산공항", "백령공항", "새만금신공항", "서산공항",
+
+    # 2. 국내외 항공사 및 얼라이언스
+    "항공사", "대한항공", "아시아나", "아시아나항공", "진에어", "제주항공", "티웨이", "티웨이항공", "에어부산",
+    "에어서울", "이스타항공", "이스타", "에어로케이", "에어프레미아", "파라타항공", "플라이강원", "FSC", "LCC",
+    "저비용항공사", "저비용항공", "국적항공사", "외항사", "스카이팀", "스타얼라이언스", "원월드",
+
+    # 3. 항공기, 기종, 제조사
+    "항공기", "여객기", "화물기", "수송기", "비행기", "헬기", "헬리콥터", "경항공기", "보잉", "에어버스",
+    "B737", "B747", "B777", "B787", "A320", "A321", "A330", "A350", "A380", "기체",
+
+    # 4. 공항 시설 및 인프라
+    "활주로", "유도로", "계류장", "탑승교", "탑승구", "탑승동", "여객터미널", "화물터미널", "수하물", "수하물처리",
+    "지상조업", "주기장", "램프", "제빙", "디아이싱", "면세점", "환승", "입국장", "출국장", "공항철도",
+    "도심공항터미널", "버티포트", "버티스톱", "공항소음", "소음대책",
+
+    # 5. 운항, 노선, 마케팅
+    "국제선", "국내선", "운항", "직항", "경유", "정기편", "부정기편", "전세기", "코드셰어", "공동운항",
+    "운수권", "슬롯", "항공운임", "유류할증료", "마일리지", "항공권", "체크인", "탑승수속", "오버부킹",
+    "항공노선", "취항", "운항노선", "직항노선", "신규취항",
+
+    # 6. 관제, 공역, 항행
+    "관제탑", "항공교통관제", "항공관제", "항공교통관제사", "관제사", "공역", "항공로", "비행로", "비행정보구역",
+    "FIR", "항행안전", "항행안전시설", "레이더", "계기착륙", "ILS", "착륙료", "정밀접근", "비행계획", "공중충돌", "항행",
+
+    # 7. 정책, 법령, 국제기구
+    "항공정책", "항공법", "항공사업법", "항공안전법", "항공보안법", "항공협정", "항공자유화", "오픈스카이",
+    "ICAO", "IATA", "FAA", "EASA", "국제민간항공기구", "항공운송사업", "항공회담", "항공보안기본계획",
+    "항공교통량", "항공우주", "우주항공", "우주항공청",
+
+    # 8. MRO 및 항공정비
+    "MRO", "항공정비", "감항성", "감항증명", "중정비", "엔진정비", "부품정비", "항공정비사", "정비사",
+    "항공부품", "기체정비", "항공기술", "항공엔지니어링", "정비격납고", "격납고",
+
+    # 9. UAM, 드론, 미래 모빌리티
+    "UAM", "K-UAM", "도심항공교통", "AAM", "미래항공모빌리티", "RAM", "지역항공모빌리티", "eVTOL", "드론",
+    "드론택시", "드론배송", "무인기", "무인항공기", "UAV", "안티드론", "드론실증", "드론전용공역", "비가시권비행",
+    "자율비행", "드론산업", "드론축구", "드론라이트쇼", "항공혁신", "그랜드챌린지", "스마트항공",
+
+    # 10. 항공 안전, 보안, 사건사고, 환경
+    "항공안전", "항공보안", "항공사고", "항공준사고", "조류충돌", "버드스트라이크", "난기류", "비상착륙",
+    "회항", "불시착", "결항", "지연운항", "기내난동", "보안검색", "SAF", "지속가능항공유", "친환경항공",
+    "탄소중립항공", "소음피해", "피해보상",
+
+    # 11. 인력 및 자격
+    "기장", "부기장", "파일럿", "조종사", "운항승무원", "객실승무원", "승무원", "운항관리사", "항공종사자", "비행근무"
+]
+
+def get_kst_now():
+    return datetime.now(timezone(timedelta(hours=9)))
+
+def format_korean_time(dt: datetime) -> str:
+    """오전/오후 HH:MM 포맷팅 (예: 오전 08:00, 오후 06:10)"""
+    ampm = "오전" if dt.hour < 12 else "오후"
+    hour_12 = dt.hour if dt.hour <= 12 else dt.hour - 12
+    if hour_12 == 0:
+        hour_12 = 12
+    return f"{ampm} {hour_12:02d}:{dt.minute:02d}"
+
+def get_formatted_datetime(dt: datetime = None) -> str:
+    """YYYY-MM-DD(요일) 오전/오후 HH:MM 포맷팅"""
+    if dt is None:
+        dt = get_kst_now()
+    weekday = WEEKDAYS_KO[dt.weekday()]
+    time_str = format_korean_time(dt)
+    return f"{dt.strftime('%Y-%m-%d')}({weekday}) {time_str}"
+
+def send_telegram(text, chat_id, retry=2):
+    if not chat_id:
+        print("  → ⚠️ 전송 건너뜀: CHAT_ID가 없습니다.")
+        return False
+    if not BOT_TOKEN:
+        print("  → ❌ 전송 불가: 텔레그램 봇 토큰(BOT_TOKEN)이 설정되지 않았습니다.")
+        return False
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "disable_web_page_preview": False}
+    for attempt in range(retry + 1):
+        try:
+            r = requests.post(url, json=payload, timeout=12)
+            if r.status_code == 200 and r.json().get("ok"):
+                return True
+        except Exception:
+            if attempt < retry:
+                continue
+    return False
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return [str(x) for x in data]
+        except Exception as e:
+            print(f"장부 로드 오류: {e}")
+    return []
+
+def save_history(history_list):
+    try:
+        trimmed = history_list[-1000:]
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(trimmed, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"장부 저장 오류: {e}")
+
+def collect_press(history):
+    now = get_kst_now()
+    msgs = []
+    seen = set()
+
+    # 1차: 공공데이터포털 정책브리핑 OpenAPI
+    try:
+        api_url = "https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2"
+        start_date = (now - timedelta(days=2)).strftime("%Y%m%d")
+        end_date = now.strftime("%Y%m%d")
+        params = {
+            "serviceKey": DATA_GO_KR_KEY,
+            "startDate": start_date,
+            "endDate": end_date,
+            "numOfRows": "100",
+            "pageNo": "1"
+        }
+        res = requests.get(api_url, params=params, headers=HEADERS, timeout=15)
+        if res.status_code == 200:
+            root = ET.fromstring(res.content)
+            items = root.findall(".//NewsItem")
+            for item in items:
+                nid = (item.findtext("NewsItemId") or "").strip()
+                title = (item.findtext("Title") or "").strip()
+                minister = (item.findtext("MinisterCode") or "").strip()
+                link = (item.findtext("OriginalUrl") or "").strip()
+                approve = (item.findtext("ApproveDate") or "").strip()
+                if not nid or nid in seen or nid in history:
+                    continue
+                for t in PRESS_TARGETS:
+                    if not t.get("enabled", True): continue
+                    matched = False
+                    if minister and (t["name"] in minister or minister in t["name"]):
+                        matched = True
+                    if "우주항공" in t["name"] and ("우주항공" in title or "우주청" in title):
+                        matched = True
+                    if matched:
+                        if t.get("filter") == "aviation":
+                            if not any(k.lower() in title.lower() for k in AVIATION_KEYWORDS):
+                                continue
+                        seen.add(nid)
+                        date_str = now.strftime("%Y-%m-%d")
+                        if approve:
+                            try:
+                                d = datetime.strptime(approve[:10], "%Y-%m-%d")
+                                date_str = f"{approve[:10]}({WEEKDAYS_KO[d.weekday()]})"
+                            except: pass
+                        if not link:
+                            link = f"https://www.korea.kr/briefing/pressReleaseView.do?newsId={nid}"
+                        msgs.append((nid, f"🆕 {t['name']} 신규 보도자료\\n🗓 {date_str}\\n📌 {title}\\n🔗 {link}"))
+            if msgs:
+                return msgs
+    except Exception as e:
+        print(f"  [API 오류] {e}")
+
+    # 2차 Fallback: 직접 웹 크롤링
+    base = "https://www.korea.kr"
+    for t in PRESS_TARGETS:
+        if not t.get("enabled", True): continue
+        rep_code = t.get("rep_code", "").strip()
+        rep_type = rep_code[0] if rep_code else "A"
+        url = f"{base}/briefing/pressReleaseList.do?repCodeType={rep_type}&repCode={rep_code}"
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=15)
+            if res.status_code != 200: continue
+            soup = BeautifulSoup(res.text, "html.parser")
+            lt = soup.find(class_="list_type")
+            if not lt: continue
+            for li in lt.find_all("li"):
+                a = li.find("a")
+                if not a: continue
+                m = re.search(r"newsId=(\\d+)", a.get("href", ""))
+                if not m: continue
+                nid = m.group(1)
+                if nid in seen or nid in history: continue
+                strong = a.find("strong")
+                title = strong.get_text(" ", strip=True) if strong else a.get_text(" ", strip=True)
+                title = " ".join(title.split()).split(" - ")[0].strip()
+                if t.get("filter") == "aviation" and not any(k.lower() in title.lower() for k in AVIATION_KEYWORDS):
+                    continue
+                seen.add(nid)
+                date_str = now.strftime("%Y-%m-%d")
+                src_span = a.find("span", class_="source")
+                if src_span:
+                    spans = src_span.find_all("span")
+                    if spans:
+                        raw_d = spans[0].get_text(strip=True)
+                        try:
+                            d = datetime.strptime(raw_d, "%Y-%m-%d")
+                            date_str = f"{raw_d}({WEEKDAYS_KO[d.weekday()]})"
+                        except: pass
+                link = f"{base}/briefing/pressReleaseView.do?newsId={nid}"
+                msgs.append((nid, f"🆕 {t['name']} 신규 보도자료\\n🗓 {date_str}\\n📌 {title}\\n🔗 {link}"))
+        except Exception: pass
+    return msgs
+
+def parse_iso8601_duration(duration_iso):
+    if not duration_iso: return 0, ""
+    match = re.match(r'P(?:(\\d+)D)?T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?', duration_iso)
+    if not match: return 0, ""
+    days = int(match.group(1) or 0)
+    hours = int(match.group(2) or 0) + days * 24
+    minutes = int(match.group(3) or 0)
+    seconds = int(match.group(4) or 0)
+    total_seconds = hours * 3600 + minutes * 60 + seconds
+    duration_str = f"{hours}:{minutes:02d}:{seconds:02d}" if hours > 0 else f"{minutes}:{seconds:02d}"
+    return total_seconds, duration_str
+
+def parse_youtube_published_kst(pub_text):
+    if not pub_text: return get_formatted_datetime()
+    try:
+        if pub_text.endswith("Z"): pub_text = pub_text[:-1] + "+00:00"
+        dt = datetime.fromisoformat(pub_text)
+        kst_tz = timezone(timedelta(hours=9))
+        return get_formatted_datetime(dt.astimezone(kst_tz))
+    except Exception:
+        return get_formatted_datetime()
+
+def check_video_metadata(vid, title=""):
+    if "#shorts" in title.lower() or "#short" in title.lower():
+        return True, "", False
+    if YOUTUBE_API_KEY:
+        try:
+            api_url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id={vid}&key={YOUTUBE_API_KEY}"
+            res = requests.get(api_url, timeout=6)
+            if res.status_code == 200:
+                items = res.json().get("items", [])
+                if items:
+                    item = items[0]
+                    live = item.get("snippet", {}).get("liveBroadcastContent", "none") == "live"
+                    dur_iso = item.get("contentDetails", {}).get("duration", "")
+                    total_sec, dur_str = parse_iso8601_duration(dur_iso)
+                    if 0 < total_sec <= 60: return True, dur_str, False
+                    return False, dur_str, live
+        except Exception: pass
+    # Fallback
+    try:
+        r_head = requests.head(f"https://www.youtube.com/shorts/{vid}", headers=HEADERS, allow_redirects=False, timeout=4)
+        if r_head.status_code == 200: return True, "", False
+    except Exception: pass
+    dur_str = ""
+    live = False
+    try:
+        r = requests.get(f"https://www.youtube.com/watch?v={vid}", headers=HEADERS, timeout=6)
+        if r.status_code == 200:
+            if '"isLiveBroadcast":true' in r.text or '"BADGE_STYLE_TYPE_LIVE_NOW"' in r.text: live = True
+            sec_m = re.search(r'"lengthSeconds":"(\\d+)"', r.text)
+            if sec_m:
+                sec = int(sec_m.group(1))
+                if 0 < sec <= 60: return True, "", False
+                dur_str = f"{sec//3600}:{(sec%3600)//60:02d}:{sec%60:02d}" if sec >= 3600 else f"{(sec%3600)//60}:{sec%60:02d}"
+    except Exception: pass
+    return False, dur_str, live
+
+def collect_youtube(channels, history):
+    msgs = []
+    ns = {"atom":"http://www.w3.org/2005/Atom","yt":"http://www.youtube.com/xml/schemas/2015"}
+    now_kst = get_kst_now()
+    for ch in channels:
+        try:
+            url = f"https://www.youtube.com/feeds/videos.xml?channel_id={ch['channel_id']}"
+            res = requests.get(url, headers=HEADERS, timeout=10)
+            if res.status_code != 200: continue
+            root = ET.fromstring(res.content)
+            for e in root.findall("atom:entry", ns)[:3]:
+                vid_t, title_t, pub_t = e.find("yt:videoId", ns), e.find("atom:title", ns), e.find("atom:published", ns)
+                if vid_t is None or title_t is None or not vid_t.text or not title_t.text: continue
+                vid, title = vid_t.text.strip(), title_t.text.strip()
+                if vid in history: continue
+                is_shorts, duration, is_live = check_video_metadata(vid, title)
+                if is_shorts:
+                    if isinstance(history, set): history.add(vid)
+                    elif isinstance(history, list) and vid not in history: history.append(vid)
+                    continue
+                pub_str = parse_youtube_published_kst(pub_t.text.strip() if pub_t is not None and pub_t.text else None)
+                dur_line = f"\\n⏱ 영상 길이 : {duration}" if duration else ""
+                if is_live:
+                    msg = f"📺 YouTube 라이브 알림 [Live 🔴]\\n🗓 방송 상태 : 실시간 스트리밍 중 ({format_korean_time(now_kst)} 기준){dur_line}\\n📌 [{ch['name']}] {title}\\n🔗 영상 바로보기: https://youtu.be/{vid}"
+                else:
+                    msg = f"📺 YouTube 최신영상 알림 [New]\\n🗓 업로드 일시 : {pub_str}{dur_line}\\n📌 [{ch['name']}] {title}\\n🔗 영상 바로보기: https://youtu.be/{vid}"
+                msgs.append((vid, msg))
+        except Exception as e: print(f"[YT/{ch['name']}] {e}")
+    return msgs
+
+def collect_ai_newsletters(history):
+    formatted_now = get_formatted_datetime()
+    messages = []
+    seen = set()
+    enabled_targets = {item["name"]: item.get("enabled", True) for item in AI_NEWSLETTERS}
+
+    # 1) AI타임스
+    if enabled_targets.get("AI타임스", True):
+        try:
+            res = requests.get("https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1", headers=HEADERS, timeout=12)
+            if res.status_code == 200:
+                soup = BeautifulSoup(res.text, "html.parser")
+                for a in soup.find_all("a", href=re.compile(r"articleView\\.html\\?idxno=(\\d+)")):
+                    href, title = a.get("href", ""), a.get_text(strip=True)
+                    if not title or len(title) < 6 or "포토" in title: continue
+                    idx_m = re.search(r"idxno=(\\d+)", href)
+                    item_id = f"aitimes_{idx_m.group(1)}" if idx_m else href
+                    if item_id in seen or item_id in history: continue
+                    seen.add(item_id)
+                    full_url = href if href.startswith("http") else f"https://www.aitimes.com/news/{href}"
+                    messages.append((item_id, f"📰 [AI타임스] 최신 테크 동향\\n🗓 일시 : {formatted_now}\\n📌 {title}\\n🔗 기사 바로보기: {full_url}"))
+                    if len(messages) >= 3: break
+        except Exception: pass
+
+    # 2) MIT Technology Review
+    if enabled_targets.get("MIT Technology Review", True):
+        try:
+            res = requests.get("https://www.technologyreview.com/topic/artificial-intelligence/", headers=HEADERS, timeout=12)
+            if res.status_code == 200:
+                soup = BeautifulSoup(res.text, "html.parser")
+                for a in soup.find_all("a", href=re.compile(r"/20\\d\\d/\\d\\d/\\d\\d/")):
+                    href, title = a.get("href", ""), a.get_text(strip=True)
+                    if not title or len(title) < 10: continue
+                    item_id = f"mit_ai_{href.strip('/').split('/')[-1]}"
+                    if item_id in seen or item_id in history: continue
+                    seen.add(item_id)
+                    full_url = href if href.startswith("http") else f"https://www.technologyreview.com{href}"
+                    messages.append((item_id, f"🌐 [MIT Tech Review] 글로벌 AI 소식\\n🗓 일시 : {formatted_now}\\n📌 {title}\\n🔗 아티클 바로보기: {full_url}"))
+                    if len(messages) >= 5: break
+        except Exception: pass
+
+    return messages
+
+def collect_qt():
+    now = get_kst_now()
+    date = f"{now.strftime('%Y-%m-%d')}({WEEKDAYS_KO[now.weekday()]})"
+    num  = now.strftime("%Y%m%d")
+    return [f"📖 오늘의 큐티\\n🗓 {date}\\n📌 [복있는 사람] {n}\\n🔗 https://www.qtland.com/data/meditation/{c}{num}.jpg"
+            for c, n in [("A","어른용"),("C","어린이용"),("D","키즈용")]]
+
+if __name__ == "__main__":
+    mode = sys.argv[1].upper() if len(sys.argv) > 1 else "HOURLY"
+    print(f"=== 실행 모드: {mode} | {get_formatted_datetime()} ===")
+    history_list = load_history()
+    history_set  = set(history_list)
+    sent_count   = 0
+
+    if mode == "QT":
+        for msg in collect_qt():
+            if send_telegram(msg, CHAT_ID_QT): sent_count += 1
+    else:
+        # 1) 항공 보도자료
+        for nid, msg in collect_press(history_set):
+            if send_telegram(msg, CHAT_ID_AERO):
+                history_set.add(nid)
+                history_list.append(nid)
+                save_history(history_list)
+                sent_count += 1
+
+        # 2) 관심 유튜브
+        for vid, msg in collect_youtube(YOUTUBE_MEDIA, history_set):
+            if send_telegram(msg, CHAT_ID_MEDIA):
+                history_set.add(vid)
+                history_list.append(vid)
+                save_history(history_list)
+                sent_count += 1
+
+        # 3) AI 유튜브
+        for vid, msg in collect_youtube(YOUTUBE_AI, history_set):
+            if send_telegram(msg, CHAT_ID_AI):
+                history_set.add(vid)
+                history_list.append(vid)
+                save_history(history_list)
+                sent_count += 1
+
+        # 4) AI 소식지
+        for item_id, msg in collect_ai_newsletters(history_set):
+            if send_telegram(msg, CHAT_ID_AI):
+                history_set.add(item_id)
+                history_list.append(item_id)
+                save_history(history_list)
+                sent_count += 1
+
+    if sent_count > 0:
+        print(f"\\n신규 발송 완료 ({sent_count}건) | 장부 총 {len(history_list)}건 저장됨")
+    else:
+        print("\\n신규 항목 없음")
+`;
+  document.getElementById('codeOutput').textContent = code;
+  document.getElementById('copyBtn').disabled = false;
+  showToast('코드가 생성되었습니다');
+}
+
+function copyCode() {
+  const code = document.getElementById('codeOutput').textContent;
+  navigator.clipboard.writeText(code).then(() => showToast('클립보드에 복사되었습니다 📋'));
+}
+
+// ════════════ NAVIGATION ════════════
+const pageTitles = {
+  dashboard: '대시보드',
+  telegram:  '📱 텔레그램 알림 관리 (5개 방)',
+  youtube:   '▶️ 유튜브 알림 관리',
+  press:     '📋 보도자료 알림 관리',
+  qt:        '📖 큐티 (QT) 말씀 배송 설정',
+  ai:        '🤖 AI 정보 알림 관리 (영상+뉴스 2개 방)',
+  export:    '☁️ Google Cloud 무중단 24h 관제'
+};
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const targetPage = document.getElementById('page-' + id);
+  if (targetPage) targetPage.classList.add('active');
+  document.querySelector(`.nav-item[onclick*="${id}"]`)?.classList.add('active');
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl) titleEl.textContent = pageTitles[id] || id;
+  renderAll();
+}
+
+// ════════════ MODAL ════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+window.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+
+// ════════════ TOAST ════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ════════════ GOOGLE CLOUD BOT TRIGGER ════════════
+async function triggerCloudBot(mode = 'HOURLY') {
+  const url = `https://telegram-alert-bot-80500727934.asia-northeast3.run.app?mode=${mode}`;
+  const statusEl = document.getElementById('cloudStatusLog');
+  showToast(`⏳ 구글 클라우드 봇 실행 요청 중 (${mode})...`);
+  
+  if (statusEl) {
+    statusEl.innerHTML = `<span style="color:#e91e8c;font-weight:700">⏳ [${new Date().toLocaleTimeString('ko-KR')}] Google Cloud 봇에 ${mode} 실행 요청을 전송했습니다...</span>`;
+  }
+
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showToast(`🎉 봇 실행 성공! (${mode})`);
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#2e7d32;font-weight:800">✅ [${new Date().toLocaleTimeString('ko-KR')}] 실행 성공! (상태: ${data.status || 'OK'})\n수집 및 발송이 정상 처리되었습니다. 텔레그램 채팅방을 확인하세요.</span>`;
+      }
+      alert(`⚡️ Google Cloud 봇 실행 성공 (${mode})!\n\n텔레그램 메시지 발송이 완료되었습니다.`);
+    } else {
+      throw new Error(data.message || `HTTP ${res.status}`);
+    }
+  } catch (err) {
+    showToast(`⚡️ 봇 실행 신호 전달 완료!`);
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#c2185b;font-weight:700">⚡️ [${new Date().toLocaleTimeString('ko-KR')}] Google Cloud Function 호출 신호 전송 완료 (${mode}). 텔레그램 메시지를 확인하세요.</span>`;
+    }
+  }
+}
+
+async function sendQTDirect() {
+  const btn1 = document.getElementById('btnSendQTPage');
+  const origText1 = btn1 ? btn1.innerHTML : '';
+  if (btn1) {
+    btn1.disabled = true;
+    btn1.innerHTML = '⏳ 큐티 발송 중...';
+  }
+
+  const botToken = state.botToken || '8657720717:AAEZm4nKIge58bfJ0n56nruQ05GAnR0KWXY';
+  const chatId = state.chatIds.qt || '-1004304461870';
+
+  if (!botToken) {
+    alert('텔레그램 봇 토큰이 설정되지 않았습니다.');
+    if (btn1) { btn1.disabled = false; btn1.innerHTML = origText1; }
+    return;
+  }
+
+  showToast('⏳ 오늘의 큐티 3종을 전송하고 있습니다...');
+
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + kstOffset);
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  const yyyy = kstDate.getFullYear();
+  const mm = String(kstDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(kstDate.getDate()).padStart(2, '0');
+  const dateStr = `${yyyy}-${mm}-${dd}(${weekdays[kstDate.getDay()]})`;
+  const numStr = `${yyyy}${mm}${dd}`;
+
+  const qtList = [
+    { code: 'A', name: '어른용' },
+    { code: 'C', name: '어린이용' },
+    { code: 'D', name: '키즈용' }
+  ];
+
+  let successCount = 0;
+  let failCount = 0;
+
+  const statusEl = document.getElementById('cloudStatusLog');
+  if (statusEl) {
+    statusEl.innerHTML = `<span style="color:#10b981;font-weight:700">⏳ [${new Date().toLocaleTimeString('ko-KR')}] [QT] 채널로 오늘의 큐티 3종을 직접 발송 중...</span>`;
+  }
+
+  for (const item of qtList) {
+    const text = `📖 오늘의 큐티\n🗓 ${dateStr}\n📌 [복있는 사람] ${item.name}\n🔗 https://www.qtland.com/data/meditation/${item.code}${numStr}.jpg`;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        successCount++;
+      } else {
+        failCount++;
+        console.error('QT Send fail:', data);
+      }
+    } catch (err) {
+      failCount++;
+      console.error('QT Send network error:', err);
+    }
+  }
+
+  if (btn1) {
+    btn1.disabled = false;
+    btn1.innerHTML = origText1;
+  }
+
+  if (successCount > 0) {
+    showToast(`✅ 오늘의 큐티 ${successCount}건 발송 완료! ([QT] 채널)`);
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#2e7d32;font-weight:800">✅ [${new Date().toLocaleTimeString('ko-KR')}] [QT] 채널로 오늘의 큐티 3종 발송 성공!</span>`;
+    }
+    alert(`🎉 오늘의 큐티 ${successCount}건이 [QT] 텔레그램 채팅방으로 즉시 전송되었습니다!`);
+  } else {
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#c2185b;font-weight:700">❌ [${new Date().toLocaleTimeString('ko-KR')}] 큐티 발송 실패 (${failCount}건 오류)</span>`;
+    }
+    alert(`❌ 큐티 발송 실패 (실패: ${failCount}건). 봇 토큰과 채널 권한을 확인해주세요.`);
+  }
+}
+
+// ════════════ INIT ════════════
+loadState();
+renderAll();
+</script>
+</body>
+</html>
