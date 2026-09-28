@@ -737,6 +737,10 @@ def telegram_alert_bot(request=None):
 def main(request=None):
     return telegram_alert_bot(request)
 
+# Cloud Run / Functions Framework 진입점 호환성 별칭
+hello_http = telegram_alert_bot
+run_bot = telegram_alert_bot
+
 if __name__ == "__main__":
     raw_arg = sys.argv[1].upper() if len(sys.argv) > 1 else "HOURLY"
     run_pipeline(raw_arg)
