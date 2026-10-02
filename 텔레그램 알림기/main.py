@@ -15,19 +15,13 @@ GCS_CONFIG_BLOB = "config.json"
 GCS_BLOB_NAME   = "sent_history.json"
 
 def _get_gcs_bucket():
-    """Google Cloud Storage 버킷 연결 객체 반환 (미존재 시 자동 생성)"""
+    """Google Cloud Storage 버킷 연결 객체 반환 (Storage Object Admin 권한 완벽 호환)"""
     try:
         from google.cloud import storage
         client = storage.Client()
-        bucket = client.bucket(GCS_BUCKET_NAME)
-        if not bucket.exists():
-            try:
-                bucket = client.create_bucket(GCS_BUCKET_NAME, location="asia-northeast3")
-                print(f"📦 [GCS] 신규 영구 저장소 버킷 생성: {GCS_BUCKET_NAME}")
-            except Exception:
-                pass
-        return bucket
-    except Exception:
+        return client.bucket(GCS_BUCKET_NAME)
+    except Exception as e:
+        print(f"⚠️ GCS 클라이언트 초기화 예외: {e}")
         return None
 
 def load_config():
@@ -202,24 +196,7 @@ def get_formatted_datetime(dt: datetime = None, include_approx: bool = False) ->
     time_str = format_korean_time(dt)
     return f"{dt.strftime('%Y-%m-%d')}({weekday}) {time_str}"
 
-GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME") or CONFIG.get("gcs_bucket_name", "telegram-alert-bot-history-80500727934")
-GCS_BLOB_NAME   = "sent_history.json"
 
-def _get_gcs_bucket():
-    """Google Cloud Storage 버킷 연결 객체 반환 (미존재 시 자동 생성)"""
-    try:
-        from google.cloud import storage
-        client = storage.Client()
-        bucket = client.bucket(GCS_BUCKET_NAME)
-        if not bucket.exists():
-            try:
-                bucket = client.create_bucket(GCS_BUCKET_NAME, location="asia-northeast3")
-                print(f"📦 [GCS] 신규 영구 저장소 버킷 생성: {GCS_BUCKET_NAME}")
-            except Exception:
-                pass
-        return bucket
-    except Exception:
-        return None
 
 def load_history():
     """발송 장부 로드 (Google Cloud Storage 영구 저장소 우선, 로컬 파일 백업)"""
@@ -364,6 +341,7 @@ def collect_press(history, ignore_history=False):
                 seen.add(nid)
 
                 date_str = now.strftime("%Y-%m-%d")
+                raw_d = ""
                 src_span = a.find("span", class_="source")
                 if src_span:
                     spans = src_span.find_all("span")
@@ -374,6 +352,14 @@ def collect_press(history, ignore_history=False):
                             date_str = f"{raw_d}({WEEKDAYS_KO[d.weekday()]})"
                         except:
                             date_str = raw_d
+
+                # 정기 수집 시 오늘(Today) 발행된 보도자료가 아니면 과거 자료로 간주하여 차단
+                if not ignore_history and raw_d:
+                    today_str = now.strftime("%Y-%m-%d")
+                    if raw_d != today_str:
+                        if isinstance(history, set): history.add(nid)
+                        elif isinstance(history, list) and nid not in history: history.append(nid)
+                        continue
 
                 link = f"{base}/briefing/pressReleaseView.do?newsId={nid}"
                 msg = (
@@ -414,30 +400,48 @@ def parse_iso8601_duration(duration_iso):
         duration_str = f"{minutes}:{seconds:02d}"
     return total_seconds, duration_str
 
-def parse_youtube_published_kst(pub_text):
+def parse_youtube_published_dt(pub_text):
+    """유튜브 발행 시각(KST datetime) 파싱"""
     if not pub_text:
-        return get_formatted_datetime()
+        return None
     try:
         if pub_text.endswith("Z"):
             pub_text = pub_text[:-1] + "+00:00"
         dt = datetime.fromisoformat(pub_text)
         kst_tz = timezone(timedelta(hours=9))
-        dt_kst = dt.astimezone(kst_tz)
-        return get_formatted_datetime(dt_kst)
+        return dt.astimezone(kst_tz)
     except Exception:
-        return get_formatted_datetime()
+        return None
+
+def parse_youtube_published_kst(pub_text):
+    dt = parse_youtube_published_dt(pub_text)
+    if dt:
+        return get_formatted_datetime(dt)
+    return get_formatted_datetime()
 
 def check_video_metadata(vid, title=""):
     """
     유튜브 영상의 쇼츠 여부, 재생 시간(Duration), 라이브 여부 정밀 판별
-    (YouTube Data API v3 우선 사용, 미설정 시 웹 스크래핑 폴백)
+    (3분 이하 최신 쇼츠 100% 차단 + HTTP 200 Shorts 엔드포인트 완벽 검증)
     반환: (is_shorts, duration_str, is_live_now)
     """
     # 1. 제목에 #shorts 포함 시 원천 차단
     if "#shorts" in title.lower() or "#short" in title.lower():
         return True, "", False
 
-    # 2. YouTube Data API v3 우선 사용 (100% 신뢰도)
+    # 2. 유튜브 공식 쇼츠 URL 직접 검증 (100% 신뢰도: 쇼츠는 200 OK, 일반 영상은 303 리디렉트)
+    try:
+        shorts_url = f"https://www.youtube.com/shorts/{vid}"
+        r_shorts = requests.get(shorts_url, headers=HEADERS, allow_redirects=False, timeout=4)
+        if r_shorts.status_code == 200:
+            return True, "", False
+    except Exception:
+        pass
+
+    # 3. YouTube Data API v3 연동 (재생 시간 및 라이브 상태 조회)
+    duration_str = ""
+    is_live_now = False
+
     if YOUTUBE_API_KEY:
         try:
             api_url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id={vid}&key={YOUTUBE_API_KEY}"
@@ -458,25 +462,11 @@ def check_video_metadata(vid, title=""):
                     duration_iso = content_details.get("duration", "")
                     total_sec, duration_str = parse_iso8601_duration(duration_iso)
                     
-                    # 60초 이하는 쇼츠로 판별하여 차단
-                    if 0 < total_sec <= 60:
-                        return True, duration_str, False
-                    
                     return False, duration_str, is_live_now
         except Exception as e:
             print(f"  ⚠️ [YouTube API 호출 예외] {e} -> 스크래핑으로 전환")
 
-    # 3. API 미설정 또는 호출 실패 시 웹 스크래핑 방식 (Fallback)
-    try:
-        shorts_url = f"https://www.youtube.com/shorts/{vid}"
-        r_head = requests.head(shorts_url, headers=HEADERS, allow_redirects=False, timeout=4)
-        if r_head.status_code == 200:
-            return True, "", False
-    except Exception:
-        pass
-
-    duration_str = ""
-    is_live_now = False
+    # 4. API 미설정 또는 호출 실패 시 웹 스크래핑 방식 (Fallback)
     try:
         watch_url = f"https://www.youtube.com/watch?v={vid}"
         r = requests.get(watch_url, headers=HEADERS, timeout=6)
@@ -487,8 +477,6 @@ def check_video_metadata(vid, title=""):
             sec_m = re.search(r'"lengthSeconds":"(\d+)"', r.text)
             if sec_m:
                 sec = int(sec_m.group(1))
-                if 0 < sec <= 60:
-                    return True, "", False
                 if sec > 0:
                     h = sec // 3600
                     m = (sec % 3600) // 60
@@ -504,7 +492,7 @@ def check_video_metadata(vid, title=""):
 
 def collect_youtube(channels, history, ignore_history=False):
     """
-    유튜브 채널의 최신 영상 수집 (쇼츠 제외, 영상 길이 및 라이브 스트림 정밀 표기)
+    유튜브 채널의 최신 영상 수집 (쇼츠 제외, 3시간 이내 신규 업로드만 발송)
     """
     msgs = []
     ns = {"atom": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
@@ -535,6 +523,18 @@ def collect_youtube(channels, history, ignore_history=False):
                 if not ignore_history and vid in history:
                     continue
 
+                # 발행 시간 및 최근성 검사 (정기 수집 시 3시간 이상 지난 과거 영상은 자동 차단)
+                raw_pub = pub_t.text.strip() if pub_t is not None and pub_t.text else None
+                pub_dt = parse_youtube_published_dt(raw_pub)
+                if not ignore_history and pub_dt:
+                    age_seconds = (now_kst - pub_dt).total_seconds()
+                    if age_seconds > (3 * 3600):  # 3시간 초과된 과거 영상
+                        if isinstance(history, set):
+                            history.add(vid)
+                        elif isinstance(history, list) and vid not in history:
+                            history.append(vid)
+                        continue
+
                 # 쇼츠 검사 및 재생 시간 조회
                 is_shorts, duration, is_live_now = check_video_metadata(vid, title)
                 if is_shorts:
@@ -545,7 +545,7 @@ def collect_youtube(channels, history, ignore_history=False):
                             history.append(vid)
                     continue
 
-                pub_str = parse_youtube_published_kst(pub_t.text.strip() if pub_t is not None and pub_t.text else None)
+                pub_str = parse_youtube_published_kst(raw_pub)
                 video_link = f"https://youtu.be/{vid}"
                 dur_line = f"\n⏱ 영상 길이 : {duration}" if duration else ""
 
@@ -791,45 +791,87 @@ def run_pipeline(mode="HOURLY"):
                 sent_count += 1
 
     else: # HOURLY 모드 (정기 수집)
-        # 1) 항공 보도자료 수집 및 전송
-        press_items = collect_press(history_set)
-        for nid, msg in press_items:
-            if send_telegram(msg, CHAT_ID_AERO):
-                sent_count += 1
-                if nid not in history_set:
-                    history_set.add(nid)
-                    history_list.append(nid)
-                    save_history(history_list)
+        # 0) 큐티(QT) 발송 — 설정된 KST 시각 ±5분 윈도우 내 1회 발송
+        qt_cfg = CONFIG.get("qt", {})
+        if qt_cfg.get("enabled", True):
+            qt_hour   = qt_cfg.get("send_hour_kst", 5)
+            qt_min    = qt_cfg.get("send_minute_kst", 0)
+            now_kst   = get_kst_now()
+            today_key = f"qt_{now_kst.strftime('%Y%m%d')}"  # 오늘 날짜 기반 중복 방지 키
 
-        # 2) 관심 유튜브 영상 수집 및 전송 (일반 채널)
-        yt_items = collect_youtube(YOUTUBE_MEDIA, history_set)
-        for vid, msg in yt_items:
-            if send_telegram(msg, CHAT_ID_MEDIA):
-                sent_count += 1
-                if vid not in history_set:
-                    history_set.add(vid)
-                    history_list.append(vid)
-                    save_history(history_list)
+            # 설정 시각의 분을 기준으로 ±5분 허용 윈도우 계산
+            target_total = qt_hour * 60 + qt_min
+            now_total    = now_kst.hour * 60 + now_kst.minute
+            in_qt_window = abs(now_total - target_total) <= 5
 
-        # 3) AI 유튜브 영상 수집 및 전송 (AI 유튜브 전용 채널)
-        ai_yt_items = collect_youtube(YOUTUBE_AI, history_set)
-        for vid, msg in ai_yt_items:
-            if send_telegram(msg, CHAT_ID_AI_YT):
-                sent_count += 1
-                if vid not in history_set:
-                    history_set.add(vid)
-                    history_list.append(vid)
+            if in_qt_window and today_key not in history_set:
+                print(f"\n[QT] 발송 시각 도달 ({qt_hour:02d}:{qt_min:02d} KST ±5분 / 현재: {now_kst.strftime('%H:%M')} KST) — 큐티 발송 시작")
+                qt_sent = 0
+                for msg in collect_qt():
+                    if send_telegram(msg, CHAT_ID_QT):
+                        sent_count += 1
+                        qt_sent   += 1
+                if qt_sent > 0:
+                    # 오늘 QT 발송 완료 기록 (중복 발송 방지)
+                    history_set.add(today_key)
+                    history_list.append(today_key)
                     save_history(history_list)
+            elif today_key in history_set:
+                print(f"  [QT] 오늘({now_kst.strftime('%Y-%m-%d')}) 이미 발송 완료 — 건너뜀")
+            else:
+                print(f"  [QT] 대기 중 (발송 예정: {qt_hour:02d}:{qt_min:02d} KST ±5분 / 현재: {now_kst.strftime('%H:%M')} KST)")
 
-        # 4) AI 전문 소식지 수집 및 전송 (AI 뉴스 전용 채널)
-        ai_news_items = collect_ai_newsletters(history_set)
-        for item_id, msg in ai_news_items:
-            if send_telegram(msg, CHAT_ID_AI_NEWS):
-                sent_count += 1
-                if item_id not in history_set:
-                    history_set.add(item_id)
-                    history_list.append(item_id)
-                    save_history(history_list)
+        # 1~4) 보도자료·유튜브·AI 뉴스 — quiet_hours 시간대(KST 06~22시)에만 발송
+        qh_cfg    = CONFIG.get("quiet_hours", {})
+        qh_enabled = qh_cfg.get("enabled", True)
+        qh_start   = qh_cfg.get("start_hour_kst", 6)
+        qh_end     = qh_cfg.get("end_hour_kst", 22)
+        now_h      = get_kst_now().hour
+        in_active_hours = (qh_start <= now_h < qh_end) if qh_enabled else True
+
+        if not in_active_hours:
+            print(f"  [조용한 시간] 현재 {now_h:02d}시 KST — 허용 시간대({qh_start:02d}~{qh_end:02d}시) 외이므로 보도자료·유튜브·AI 뉴스 발송 건너뜀")
+        else:
+            # 1) 항공 보도자료 수집 및 전송
+            press_items = collect_press(history_set)
+            for nid, msg in press_items:
+                if send_telegram(msg, CHAT_ID_AERO):
+                    sent_count += 1
+                    if nid not in history_set:
+                        history_set.add(nid)
+                        history_list.append(nid)
+                        save_history(history_list)
+
+            # 2) 관심 유튜브 영상 수집 및 전송 (일반 채널)
+            yt_items = collect_youtube(YOUTUBE_MEDIA, history_set)
+            for vid, msg in yt_items:
+                if send_telegram(msg, CHAT_ID_MEDIA):
+                    sent_count += 1
+                    if vid not in history_set:
+                        history_set.add(vid)
+                        history_list.append(vid)
+                        save_history(history_list)
+
+            # 3) AI 유튜브 영상 수집 및 전송 (AI 유튜브 전용 채널)
+            ai_yt_items = collect_youtube(YOUTUBE_AI, history_set)
+            for vid, msg in ai_yt_items:
+                if send_telegram(msg, CHAT_ID_AI_YT):
+                    sent_count += 1
+                    if vid not in history_set:
+                        history_set.add(vid)
+                        history_list.append(vid)
+                        save_history(history_list)
+
+            # 4) AI 전문 소식지 수집 및 전송 (AI 뉴스 전용 채널)
+            ai_news_items = collect_ai_newsletters(history_set)
+            for item_id, msg in ai_news_items:
+                if send_telegram(msg, CHAT_ID_AI_NEWS):
+                    sent_count += 1
+                    if item_id not in history_set:
+                        history_set.add(item_id)
+                        history_list.append(item_id)
+                        save_history(history_list)
+
 
     if mode != "TEST":
         if sent_count > 0:

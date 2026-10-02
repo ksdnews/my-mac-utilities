@@ -102,7 +102,13 @@
   ],
   "qt": {
     "enabled": true,
-    "send_hour_kst": 3,
-    "send_minute_kst": 33
+    "send_hour_kst": 5,
+    "send_minute_kst": 0
+  },
+  "quiet_hours": {
+    "enabled": true,
+    "start_hour_kst": 6,
+    "end_hour_kst": 22,
+    "comment": "보도자료·유튜브·AI 뉴스 알림 허용 시간대 (KST). QT는 별도 스케줄로 제외."
   }
 }
