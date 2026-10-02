@@ -4,6 +4,11 @@
 import os, sys, json, re, time, requests, xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
+try:
+    from flask import Flask as _Flask, request as flask_request
+    _flask_available = True
+except ImportError:
+    _flask_available = False
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE  = os.path.join(BASE_DIR, "config.json")
@@ -948,6 +953,21 @@ def main(request=None):
 # Cloud Run / Functions Framework 진입점 호환성 별칭
 hello_http = telegram_alert_bot
 run_bot = telegram_alert_bot
+
+# ==============================================================================
+# Flask WSGI app (Gunicorn main:app 진입점 — Cloud Run Buildpacks 호환)
+# ==============================================================================
+if _flask_available:
+    app = _Flask(__name__)
+
+    @app.route("/", methods=["GET", "POST", "OPTIONS"])
+    @app.route("/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
+    def flask_handler(subpath=""):
+        body, status, headers = telegram_alert_bot(flask_request)
+        from flask import Response
+        return Response(body, status=status, headers=headers)
+else:
+    app = None
 
 if __name__ == "__main__":
     raw_arg = sys.argv[1].upper() if len(sys.argv) > 1 else "HOURLY"
