@@ -742,15 +742,16 @@ def collect_qt_senior(header_date, now):
         files = [data.get(f"Qt_a{i}") for i in range(1, 5)]
         files = [f for f in files if f]
         ref = f"{data.get('Bible_name', '')} {data.get('Bible_chapter', '')}".strip()
-        for idx, fname in enumerate(files, 1):
+        if files:
             caption = (
                 f"📖 오늘의 큐티\n"
                 f"🗓 {header_date}\n"
-                f"📌 [매일성경] 고학년 ({idx}/{len(files)}페이지)"
+                f"📌 [매일성경] 고학년 ({len(files)}페이지)"
                 + (f"\n📜 {ref}" if ref else "")
             )
-            items.append((caption, f"{SUM_BASE}/Bible_Attach/QT3/{fname}"))
-            print(f"  ★ [QT] 고학년 {idx}p ({fname})")
+            urls = [f"{SUM_BASE}/Bible_Attach/QT3/{fname}" for fname in files]
+            items.append((caption, urls))  # 한 번에(앨범) 발송
+            print(f"  ★ [QT] 고학년 {len(files)}페이지 앨범 ({', '.join(files)})")
     except Exception as e:
         print(f"  [QT 고학년 수집 오류] {e}")
     if not items:
@@ -758,28 +759,39 @@ def collect_qt_senior(header_date, now):
     return items
 
 def send_qt_item(item, chat_id):
-    """문자열이면 텍스트 발송, (캡션, 이미지URL)이면 사진 발송(실패 시 링크 텍스트로 대체)"""
+    """문자열이면 텍스트 발송, (캡션, [이미지URL...])이면 앨범 1회 발송(실패 시 링크 텍스트로 대체)"""
     if isinstance(item, str):
         return send_telegram(item, chat_id)
-    caption, img_url = item
+    caption, img_urls = item
+    if isinstance(img_urls, str):
+        img_urls = [img_urls]
     if chat_id and BOT_TOKEN:
         try:
-            img = requests.get(img_url, headers=HEADERS, timeout=20)
-            if img.status_code == 200 and img.content:
-                r = requests.post(
-                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-                    data={"chat_id": chat_id, "caption": caption},
-                    files={"photo": ("qt.jpg", img.content, "image/jpeg")},
-                    timeout=60,
-                )
-                if r.status_code == 200 and r.json().get("ok"):
-                    print(f"  → 텔레그램 사진 전송 성공 [채널: {chat_id}]")
-                    time.sleep(1.0)
-                    return True
-                print(f"  → ⚠️ 사진 전송 실패, 링크로 대체: {r.text[:120]}")
+            files, media = {}, []
+            for i, u in enumerate(img_urls):
+                img = requests.get(u, headers=HEADERS, timeout=20)
+                if img.status_code != 200 or not img.content:
+                    raise RuntimeError(f"이미지 다운로드 실패: {u}")
+                files[f"p{i}"] = (f"qt{i}.jpg", img.content, "image/jpeg")
+                m = {"type": "photo", "media": f"attach://p{i}"}
+                if i == 0:
+                    m["caption"] = caption  # 앨범은 첫 사진 캡션만 표시됨
+                media.append(m)
+            r = requests.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMediaGroup",
+                data={"chat_id": chat_id, "media": json.dumps(media)},
+                files=files,
+                timeout=90,
+            )
+            if r.status_code == 200 and r.json().get("ok"):
+                print(f"  → 텔레그램 앨범({len(img_urls)}장) 전송 성공 [채널: {chat_id}]")
+                time.sleep(1.0)
+                return True
+            print(f"  → ⚠️ 앨범 전송 실패, 링크로 대체: {r.text[:120]}")
         except Exception as e:
-            print(f"  → ⚠️ 사진 전송 에러, 링크로 대체: {e}")
-    return send_telegram(f"{caption}\n🔗 연결: {img_url}", chat_id)
+            print(f"  → ⚠️ 앨범 전송 에러, 링크로 대체: {e}")
+    links = "\n".join(f"🔗 연결: {u}" for u in img_urls)
+    return send_telegram(f"{caption}\n{links}", chat_id)
 
 # ==============================================================================
 # 8. 텔레그램 연동 테스트 모듈
