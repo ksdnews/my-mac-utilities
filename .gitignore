@@ -29,3 +29,7 @@ __pycache__/
 # Local env files
 .env
 .env.local
+
+# Kakao tokens (never commit)
+kakao_token.json
+**/kakao_token.json

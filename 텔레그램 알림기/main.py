@@ -794,6 +794,126 @@ def send_qt_item(item, chat_id):
     return send_telegram(f"{caption}\n{links}", chat_id)
 
 # ==============================================================================
+# 7-2. 카카오톡 친구 전달 모듈 (고학년 매일성경 → 지정 친구 1명)
+#   - 토큰/수신자 정보는 config.json(GitHub 공개)이 아닌 별도 파일(GCS kakao_token.json)에 보관
+#   - 토큰은 호출 때마다 필요 시 자동 갱신(refresh_token 갱신분은 즉시 영구 저장)
+# ==============================================================================
+GCS_KAKAO_BLOB   = "kakao_token.json"
+KAKAO_LOCAL_FILE = os.path.join(BASE_DIR, "kakao_token.json")
+
+def load_kakao_state():
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            blob = bucket.blob(GCS_KAKAO_BLOB)
+            if blob.exists():
+                st = json.loads(blob.download_as_text(encoding="utf-8"))
+                if isinstance(st, dict):
+                    return st
+        except Exception as e:
+            print(f"⚠️ 카카오 설정 GCS 로드 오류: {e}")
+    if os.path.exists(KAKAO_LOCAL_FILE):
+        try:
+            with open(KAKAO_LOCAL_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠️ 카카오 설정 로컬 로드 오류: {e}")
+    return {}
+
+def save_kakao_state(st):
+    bucket = _get_gcs_bucket()
+    if bucket:
+        try:
+            bucket.blob(GCS_KAKAO_BLOB).upload_from_string(
+                json.dumps(st, ensure_ascii=False, indent=2), content_type="application/json; charset=utf-8")
+        except Exception as e:
+            print(f"⚠️ 카카오 설정 GCS 저장 오류: {e}")
+    try:
+        with open(KAKAO_LOCAL_FILE, "w", encoding="utf-8") as f:
+            json.dump(st, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ 카카오 설정 로컬 저장 오류: {e}")
+
+def kakao_get_access_token(st):
+    """유효한 액세스 토큰 반환 (만료 임박 시 refresh_token으로 갱신 후 영구 저장)"""
+    if st.get("access_token") and time.time() < float(st.get("access_expires_at", 0)) - 300:
+        return st["access_token"]
+    data = {"grant_type": "refresh_token", "client_id": st.get("rest_api_key", ""),
+            "refresh_token": st.get("refresh_token", "")}
+    if st.get("client_secret"):
+        data["client_secret"] = st["client_secret"]
+    r = requests.post("https://kauth.kakao.com/oauth/token", data=data, timeout=15)
+    res = r.json() if r.status_code == 200 else {}
+    if not res.get("access_token"):
+        print(f"  [카카오] 토큰 갱신 실패 HTTP {r.status_code}: {r.text[:200]}")
+        return None
+    st["access_token"] = res["access_token"]
+    st["access_expires_at"] = time.time() + int(res.get("expires_in", 21600))
+    if res.get("refresh_token"):  # 만료 1개월 미만일 때만 새로 발급됨
+        st["refresh_token"] = res["refresh_token"]
+    save_kakao_state(st)
+    return st["access_token"]
+
+def kakao_upload_image(token, img_bytes):
+    """카카오 이미지 서버에 업로드 → 메시지에 쓸 수 있는 이미지 URL"""
+    r = requests.post("https://kapi.kakao.com/v2/api/talk/message/image/upload",
+                      headers={"Authorization": f"Bearer {token}"},
+                      files={"file": ("qt.jpg", img_bytes, "image/jpeg")}, timeout=60)
+    if r.status_code == 200:
+        return r.json().get("infos", {}).get("original", {}).get("url")
+    print(f"  [카카오] 이미지 업로드 실패 HTTP {r.status_code}: {r.text[:200]}")
+    return None
+
+def kakao_send_friends(token, uuids, template):
+    r = requests.post("https://kapi.kakao.com/v1/api/talk/friends/message/default/send",
+                      headers={"Authorization": f"Bearer {token}"},
+                      data={"receiver_uuids": json.dumps(uuids),
+                            "template_object": json.dumps(template, ensure_ascii=False)}, timeout=20)
+    res = r.json() if "json" in r.headers.get("content-type", "") else {}
+    ok = r.status_code == 200 and bool(res.get("successful_receiver_uuids"))
+    if not ok:
+        print(f"  [카카오] 친구 메시지 실패 HTTP {r.status_code}: {r.text[:300]}")
+    return ok
+
+def send_kakao_qt_senior():
+    """고학년 매일성경 페이지 이미지를 카카오톡 친구에게 페이지별 메시지로 전달. 성공 건수 반환"""
+    st = load_kakao_state()
+    if not st or not st.get("enabled", True) or not st.get("receiver_uuids"):
+        print("  [카카오] 설정 없음/비활성 — 건너뜀")
+        return 0
+    token = kakao_get_access_token(st)
+    if not token:
+        return 0
+    now = get_kst_now()
+    header_date = f"{now.strftime('%Y-%m-%d')}({WEEKDAYS_KO[now.weekday()]})"
+    items = collect_qt_senior(header_date, now)
+    sent = 0
+    for caption, urls in items:
+        total = len(urls)
+        for i, u in enumerate(urls, 1):
+            try:
+                img = requests.get(u, headers=HEADERS, timeout=20)
+                k_url = kakao_upload_image(token, img.content) if img.status_code == 200 else None
+                title = f"📖 오늘의 큐티 · 고학년 매일성경 ({i}/{total})"
+                desc  = caption.split("\n", 1)[1].replace("\n", " · ") if "\n" in caption else caption
+                link  = {"web_url": f"{SUM_BASE}/bible/today", "mobile_web_url": f"{SUM_BASE}/bible/today"}
+                if k_url:
+                    template = {"object_type": "feed",
+                                "content": {"title": title, "description": desc, "image_url": k_url,
+                                            "image_width": 800, "image_height": 600, "link": link},
+                                "buttons": [{"title": "오늘의 묵상 보기", "link": link}]}
+                else:
+                    template = {"object_type": "text", "text": f"{title}\n{desc}", "link": link,
+                                "button_title": "오늘의 묵상 보기"}
+                if kakao_send_friends(token, st["receiver_uuids"], template):
+                    sent += 1
+                    print(f"  → 카카오톡 전송 성공 ({i}/{total}페이지)")
+                time.sleep(1.0)
+            except Exception as e:
+                print(f"  [카카오] 전송 오류: {e}")
+    return sent
+
+# ==============================================================================
 # 8. 텔레그램 연동 테스트 모듈
 # ==============================================================================
 def test_telegram_connection():
@@ -840,6 +960,9 @@ def run_pipeline(mode="HOURLY"):
         for msg in collect_qt():
             if send_qt_item(msg, CHAT_ID_QT):
                 sent_count += 1
+
+    elif mode == "KAKAO_QT":
+        sent_count += send_kakao_qt_senior()
 
     elif mode == "QT_SENIOR":
         _now = get_kst_now()
@@ -900,6 +1023,12 @@ def run_pipeline(mode="HOURLY"):
                     history_set.add(today_key)
                     history_list.append(today_key)
                     save_history(history_list)
+                    # 카카오톡 친구 전달 (실패해도 텔레그램 발송에는 영향 없음)
+                    try:
+                        k_sent = send_kakao_qt_senior()
+                        print(f"  [카카오] 친구 전달 {k_sent}건")
+                    except Exception as e:
+                        print(f"  [카카오] 친구 전달 오류: {e}")
             elif today_key in history_set:
                 print(f"  [QT] 오늘({now_kst.strftime('%Y-%m-%d')}) 이미 발송 완료 — 건너뜀")
             else:
@@ -1016,6 +1145,20 @@ def telegram_alert_bot(request=None):
         else:
             res = {"status": "error", "message": "유효하지 않은 설정 데이터입니다."}
             return (json.dumps(res, ensure_ascii=False), 400, {**cors_headers, "Content-Type": "application/json; charset=utf-8"})
+
+    # 카카오톡 연동 설정 수신 (kakao_setup.py 전용, admin_key로 보호)
+    if mode == "UPDATE_KAKAO":
+        import hmac
+        body = request.get_json(silent=True) if request is not None else None
+        existing = load_kakao_state()
+        hdr = {**cors_headers, "Content-Type": "application/json; charset=utf-8"}
+        if not body or not isinstance(body, dict):
+            return (json.dumps({"status": "error", "message": "유효하지 않은 데이터"}, ensure_ascii=False), 400, hdr)
+        if existing.get("admin_key") and not hmac.compare_digest(str(body.get("admin_key", "")), str(existing["admin_key"])):
+            return (json.dumps({"status": "error", "message": "admin_key 불일치"}, ensure_ascii=False), 403, hdr)
+        existing.update(body)
+        save_kakao_state(existing)
+        return (json.dumps({"status": "success", "message": "카카오 설정 저장 완료"}, ensure_ascii=False), 200, hdr)
 
     count = run_pipeline(mode)
     res = {
