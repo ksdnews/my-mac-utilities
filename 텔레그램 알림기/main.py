@@ -719,7 +719,67 @@ def collect_qt():
         messages.append(msg)
         print(f"  ★ [QT] {cat_name} ({img_url})")
 
+    # 고학년 매일성경 (성서유니온선교회) 추가: [(캡션, 이미지URL), ...]
+    if CONFIG.get("qt", {}).get("senior_enabled", True):
+        messages.extend(collect_qt_senior(header_date, now))
+
     return messages
+
+SUM_BASE = "https://sum.su.or.kr:8888"
+
+def collect_qt_senior(header_date, now):
+    """고학년 매일성경(QT3) 오늘자 이미지(보통 2페이지) 수집 → [(캡션, 이미지URL)]"""
+    items = []
+    date_str = now.strftime("%Y-%m-%d")
+    try:
+        res = requests.post(
+            f"{SUM_BASE}/Ajax/Bible/BodyBibleCont",
+            data=json.dumps({"qt_ty": "QT3", "Base_de": date_str, "Bibletype": "2"}),
+            headers={**HEADERS, "Content-Type": "application/json; charset=utf-8"},
+            timeout=15,
+        )
+        data = res.json() if res.status_code == 200 else {}
+        files = [data.get(f"Qt_a{i}") for i in range(1, 5)]
+        files = [f for f in files if f]
+        ref = f"{data.get('Bible_name', '')} {data.get('Bible_chapter', '')}".strip()
+        for idx, fname in enumerate(files, 1):
+            caption = (
+                f"📖 오늘의 큐티\n"
+                f"🗓 {header_date}\n"
+                f"📌 [매일성경] 고학년 ({idx}/{len(files)}페이지)"
+                + (f"\n📜 {ref}" if ref else "")
+            )
+            items.append((caption, f"{SUM_BASE}/Bible_Attach/QT3/{fname}"))
+            print(f"  ★ [QT] 고학년 {idx}p ({fname})")
+    except Exception as e:
+        print(f"  [QT 고학년 수집 오류] {e}")
+    if not items:
+        print("  [QT] 고학년 매일성경 이미지를 찾지 못했습니다.")
+    return items
+
+def send_qt_item(item, chat_id):
+    """문자열이면 텍스트 발송, (캡션, 이미지URL)이면 사진 발송(실패 시 링크 텍스트로 대체)"""
+    if isinstance(item, str):
+        return send_telegram(item, chat_id)
+    caption, img_url = item
+    if chat_id and BOT_TOKEN:
+        try:
+            img = requests.get(img_url, headers=HEADERS, timeout=20)
+            if img.status_code == 200 and img.content:
+                r = requests.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                    data={"chat_id": chat_id, "caption": caption},
+                    files={"photo": ("qt.jpg", img.content, "image/jpeg")},
+                    timeout=60,
+                )
+                if r.status_code == 200 and r.json().get("ok"):
+                    print(f"  → 텔레그램 사진 전송 성공 [채널: {chat_id}]")
+                    time.sleep(1.0)
+                    return True
+                print(f"  → ⚠️ 사진 전송 실패, 링크로 대체: {r.text[:120]}")
+        except Exception as e:
+            print(f"  → ⚠️ 사진 전송 에러, 링크로 대체: {e}")
+    return send_telegram(f"{caption}\n🔗 연결: {img_url}", chat_id)
 
 # ==============================================================================
 # 8. 텔레그램 연동 테스트 모듈
@@ -766,7 +826,14 @@ def run_pipeline(mode="HOURLY"):
 
     elif mode == "QT":
         for msg in collect_qt():
-            if send_telegram(msg, CHAT_ID_QT):
+            if send_qt_item(msg, CHAT_ID_QT):
+                sent_count += 1
+
+    elif mode == "QT_SENIOR":
+        _now = get_kst_now()
+        _hd  = f"{_now.strftime('%Y-%m-%d')}({WEEKDAYS_KO[_now.weekday()]})"
+        for msg in collect_qt_senior(_hd, _now):
+            if send_qt_item(msg, CHAT_ID_QT):
                 sent_count += 1
 
     elif mode == "FORCE":
@@ -813,7 +880,7 @@ def run_pipeline(mode="HOURLY"):
                 print(f"\n[QT] 발송 시각 도달 ({qt_hour:02d}:{qt_min:02d} KST ±5분 / 현재: {now_kst.strftime('%H:%M')} KST) — 큐티 발송 시작")
                 qt_sent = 0
                 for msg in collect_qt():
-                    if send_telegram(msg, CHAT_ID_QT):
+                    if send_qt_item(msg, CHAT_ID_QT):
                         sent_count += 1
                         qt_sent   += 1
                 if qt_sent > 0:

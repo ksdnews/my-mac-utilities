@@ -660,6 +660,36 @@ body {
           </div>
         </div>
       </div>
+
+      <!-- ── 조용한 시간대(Quiet Hours) 카드 ── -->
+      <div style="margin-top:20px;background:var(--card);border:2px solid var(--border2);border-radius:16px;padding:20px 22px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:flex-start;gap:14px;">
+          <span style="font-size:28px;line-height:1;">🔕</span>
+          <div style="flex:1;">
+            <div class="section-title">조용한 시간대 설정</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:3px;font-weight:600;">보도자료·유튜브·AI 뉴스 알림을 허용할 시간대(KST)를 설정합니다. QT는 별도 스케줄로 적용됩니다.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:14px;font-weight:700;color:var(--text2)">활성화</span>
+            <label class="toggle">
+              <input type="checkbox" id="quietEnabled" checked onchange="markDirty()">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:14px;font-weight:700;color:var(--text2)">허용 시작</span>
+          <input type="number" class="qt-time-input" id="quietStart" value="6" min="0" max="23" onchange="markDirty()" style="background:#e8f5e9;text-align:center;width:68px;padding:8px 10px;">
+          <span style="font-size:16px;font-weight:800;color:var(--text)">시</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text2);margin-left:12px;">허용 종료</span>
+          <input type="number" class="qt-time-input" id="quietEnd" value="22" min="0" max="23" onchange="markDirty()" style="background:#e8f5e9;text-align:center;width:68px;padding:8px 10px;">
+          <span style="font-size:16px;font-weight:800;color:var(--text)">시</span>
+        </div>
+        <div style="margin-top:12px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:1.5px solid rgba(46,125,50,0.3);border-radius:10px;padding:12px 16px;font-size:13px;color:#2e7d32;font-weight:600;display:flex;align-items:center;gap:8px;">
+          <span>🌙</span>
+          <span>설정 범위 밖(22시~익일 06시)에는 보도자료·유튜브·AI 뉴스 알림이 자동으로 중단됩니다. QT(새벽 5시)는 이 설정과 무관하게 발송됩니다.</span>
+        </div>
+      </div>
     </div>
 
     <!-- ── PAGE: Telegram (5 Channels Grid) ── -->
@@ -852,14 +882,14 @@ body {
             <span style="font-size:26px">🌅</span>
             <div>
               <div style="font-size:16px;font-weight:800;color:var(--text)">매일 새벽 발송 시각</div>
-              <div style="font-size:13px;color:var(--text2);font-weight:600">정각 트래픽 분산을 위해 분 단위까지 정밀하게 설정됩니다. (기본: 새벽 3시 33분)</div>
+              <div style="font-size:13px;color:var(--text2);font-weight:600">정각 트래픽 분산을 위해 분 단위까지 정밀하게 설정됩니다. (기본: 새벽 5시 00분)</div>
             </div>
           </div>
           <div class="qt-time-row" style="margin-top:0; gap:8px;">
             <span style="font-size:15px;font-weight:700;color:var(--text2)">새벽</span>
-            <input type="number" class="qt-time-input" id="qtHour" value="3" min="0" max="23" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
+            <input type="number" class="qt-time-input" id="qtHour" value="5" min="0" max="23" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
             <span style="font-size:16px;font-weight:800;color:var(--text)">시</span>
-            <input type="number" class="qt-time-input" id="qtMin" value="33" min="0" max="59" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
+            <input type="number" class="qt-time-input" id="qtMin" value="0" min="0" max="59" onchange="markDirty()" style="background:#fff2f8;text-align:center;width:68px;padding:8px 10px;">
             <span style="font-size:16px;font-weight:800;color:var(--text)">분</span>
           </div>
         </div>
@@ -902,13 +932,24 @@ body {
               <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
             </div>
 
+            <div style="background:linear-gradient(145deg, #fff7fa, #ffeaf3);border:1.5px solid var(--border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:14px">
+                <span style="font-size:22px">📙</span>
+                <div>
+                  <div style="font-size:16px;font-weight:800;color:var(--text)">고학년 매일성경 (성서유니온 · 2페이지)</div>
+                  <div style="font-size:13px;color:var(--text2);font-weight:500">초등 고학년을 위한 오늘의 매일성경 묵상 2페이지 이미지</div>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="qtSeniorEnabled" checked onchange="markDirty()"><span class="toggle-slider"></span></label>
+            </div>
+
           </div>
         </div>
       </div>
 
       <div style="background:linear-gradient(135deg, #fff0f7, #ffddec);border:1.5px solid rgba(255,110,180,0.35);border-radius:14px;padding:16px 20px;font-size:13px;color:var(--text2);font-weight:600;display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">💡</span>
-        <span>새벽 3시 33분에 [QT] 텔레그램 채팅방으로 묵상 이미지 3종(어른·어린이·키즈)이 자동 발송됩니다.</span>
+        <span>새벽 5시 00분에 [QT] 텔레그램 채팅방으로 묵상 이미지 3종(어른·어린이·키즈) + 고학년 매일성경 2페이지가 자동 발송됩니다.</span>
       </div>
     </div>
 
@@ -1178,7 +1219,8 @@ let state = {
     { name: 'AI타임스', desc: '국내 최신 생성형 AI 및 테크 산업 동향', url: 'https://www.aitimes.com/news/articleList.html?sc_section_code=S1N1', enabled: true },
     { name: 'MIT Technology Review', desc: '글로벌 핵심 AI 테크 분석 브리핑', url: 'https://www.technologyreview.com/topic/artificial-intelligence/', enabled: true }
   ],
-  qt: { enabled:true, hour:3, minute:33 }
+  qt: { enabled:true, hour:5, minute:0, senior_enabled:true },
+  quietHours: { enabled:true, start:6, end:22 }
 };
 
 let dirty = false;
@@ -1198,9 +1240,10 @@ function loadState() {
         if (!parsed.chatIds.qt) parsed.chatIds.qt = '-1004304461870';
       }
       if (parsed.qt) {
-        if (parsed.qt.hour === undefined) parsed.qt.hour = 3;
-        if (parsed.qt.minute === undefined) parsed.qt.minute = 33;
+        if (parsed.qt.hour === undefined) parsed.qt.hour = 5;
+        if (parsed.qt.minute === undefined) parsed.qt.minute = 0;
       }
+      if (!parsed.quietHours) parsed.quietHours = { enabled:true, start:6, end:22 };
       if (parsed.dataGoKrKey) {
         state.dataGoKrKey = parsed.dataGoKrKey;
       }
@@ -1235,9 +1278,20 @@ function loadState() {
   const elHour = document.getElementById('qtHour');
   const elMin  = document.getElementById('qtMin');
   const elQtEn = document.getElementById('qtEnabled');
-  if (elHour) elHour.value = state.qt.hour !== undefined ? state.qt.hour : 3;
-  if (elMin)  elMin.value  = state.qt.minute !== undefined ? state.qt.minute : 33;
+  if (elHour) elHour.value = state.qt.hour !== undefined ? state.qt.hour : 5;
+  if (elMin)  elMin.value  = state.qt.minute !== undefined ? state.qt.minute : 0;
   if (elQtEn) elQtEn.checked = state.qt.enabled !== undefined ? state.qt.enabled : true;
+  const elQtSr = document.getElementById('qtSeniorEnabled');
+  if (elQtSr) elQtSr.checked = state.qt.senior_enabled !== undefined ? state.qt.senior_enabled : true;
+
+  // Populate Quiet Hours inputs
+  const elQhEn    = document.getElementById('quietEnabled');
+  const elQhStart = document.getElementById('quietStart');
+  const elQhEnd   = document.getElementById('quietEnd');
+  const qh = state.quietHours || { enabled:true, start:6, end:22 };
+  if (elQhEn)    elQhEn.checked   = qh.enabled !== undefined ? qh.enabled : true;
+  if (elQhStart) elQhStart.value  = qh.start   !== undefined ? qh.start   : 6;
+  if (elQhEnd)   elQhEnd.value    = qh.end     !== undefined ? qh.end     : 22;
 
   // Populate API key input
   const elApiKey = document.getElementById('dataGoKrKey');
@@ -1263,8 +1317,18 @@ function saveAll() {
   if (elApiKey && elApiKey.value) state.dataGoKrKey = elApiKey.value.trim();
 
   state.qt.enabled = document.getElementById('qtEnabled').checked;
-  state.qt.hour    = parseInt(document.getElementById('qtHour').value) || 3;
-  state.qt.minute  = parseInt(document.getElementById('qtMin').value) || 33;
+  state.qt.hour    = parseInt(document.getElementById('qtHour').value) || 5;
+  state.qt.minute  = parseInt(document.getElementById('qtMin').value) || 0;
+  const elQtSr2 = document.getElementById('qtSeniorEnabled');
+  if (elQtSr2) state.qt.senior_enabled = elQtSr2.checked;
+
+  const elQhEn2    = document.getElementById('quietEnabled');
+  const elQhStart2 = document.getElementById('quietStart');
+  const elQhEnd2   = document.getElementById('quietEnd');
+  if (!state.quietHours) state.quietHours = {};
+  if (elQhEn2)    state.quietHours.enabled = elQhEn2.checked;
+  if (elQhStart2) state.quietHours.start   = parseInt(elQhStart2.value) || 6;
+  if (elQhEnd2)   state.quietHours.end     = parseInt(elQhEnd2.value)   || 22;
 
   localStorage.setItem('tg_dashboard_state', JSON.stringify(state));
   document.getElementById('lastModified').textContent = new Date().toLocaleTimeString('ko-KR');
@@ -1665,82 +1729,70 @@ def send_telegram(text, chat_id, retry=2):
                 continue
     return False
 
+def load_config():
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        blob = client.bucket("telegram-alert-bot-history-80500727934").blob("config.json")
+        if blob.exists():
+            return json.loads(blob.download_as_text(encoding="utf-8"))
+    except Exception: pass
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception: pass
+    return {}
+
+def save_config(cfg):
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        blob = client.bucket("telegram-alert-bot-history-80500727934").blob("config.json")
+        blob.upload_from_string(json.dumps(cfg, ensure_ascii=False, indent=2), content_type="application/json; charset=utf-8")
+    except Exception: pass
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+    except Exception: pass
+
 def load_history():
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        blob = client.bucket("telegram-alert-bot-history-80500727934").blob("sent_history.json")
+        if blob.exists():
+            data = json.loads(blob.download_as_text(encoding="utf-8"))
+            if isinstance(data, list): return [str(x) for x in data]
+            elif isinstance(data, dict): return [str(x) for x in data.get("history", [])]
+    except Exception: pass
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if isinstance(data, list):
-                    return [str(x) for x in data]
-        except Exception as e:
-            print(f"장부 로드 오류: {e}")
+                if isinstance(data, list): return [str(x) for x in data]
+                elif isinstance(data, dict): return [str(x) for x in data.get("history", [])]
+        except Exception: pass
     return []
 
 def save_history(history_list):
+    trimmed = history_list[-2000:]
     try:
-        trimmed = history_list[-1000:]
+        from google.cloud import storage
+        client = storage.Client()
+        blob = client.bucket("telegram-alert-bot-history-80500727934").blob("sent_history.json")
+        blob.upload_from_string(json.dumps(trimmed, ensure_ascii=False, indent=2), content_type="application/json")
+    except Exception: pass
+    try:
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(trimmed, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"장부 저장 오류: {e}")
-
-def collect_press(history):
+    except Exception: pass
+def collect_press(history, ignore_history=False):
     now = get_kst_now()
     msgs = []
     seen = set()
-
-    # 1차: 공공데이터포털 정책브리핑 OpenAPI
-    try:
-        api_url = "https://apis.data.go.kr/1371000/policyNewsService2/policyNewsList2"
-        start_date = (now - timedelta(days=2)).strftime("%Y%m%d")
-        end_date = now.strftime("%Y%m%d")
-        params = {
-            "serviceKey": DATA_GO_KR_KEY,
-            "startDate": start_date,
-            "endDate": end_date,
-            "numOfRows": "100",
-            "pageNo": "1"
-        }
-        res = requests.get(api_url, params=params, headers=HEADERS, timeout=15)
-        if res.status_code == 200:
-            root = ET.fromstring(res.content)
-            items = root.findall(".//NewsItem")
-            for item in items:
-                nid = (item.findtext("NewsItemId") or "").strip()
-                title = (item.findtext("Title") or "").strip()
-                minister = (item.findtext("MinisterCode") or "").strip()
-                link = (item.findtext("OriginalUrl") or "").strip()
-                approve = (item.findtext("ApproveDate") or "").strip()
-                if not nid or nid in seen or nid in history:
-                    continue
-                for t in PRESS_TARGETS:
-                    if not t.get("enabled", True): continue
-                    matched = False
-                    if minister and (t["name"] in minister or minister in t["name"]):
-                        matched = True
-                    if "우주항공" in t["name"] and ("우주항공" in title or "우주청" in title):
-                        matched = True
-                    if matched:
-                        if t.get("filter") == "aviation":
-                            if not any(k.lower() in title.lower() for k in AVIATION_KEYWORDS):
-                                continue
-                        seen.add(nid)
-                        date_str = now.strftime("%Y-%m-%d")
-                        if approve:
-                            try:
-                                d = datetime.strptime(approve[:10], "%Y-%m-%d")
-                                date_str = f"{approve[:10]}({WEEKDAYS_KO[d.weekday()]})"
-                            except: pass
-                        if not link:
-                            link = f"https://www.korea.kr/briefing/pressReleaseView.do?newsId={nid}"
-                        msgs.append((nid, f"🆕 {t['name']} 신규 보도자료\\n🗓 {date_str}\\n📌 {title}\\n🔗 {link}"))
-            if msgs:
-                return msgs
-    except Exception as e:
-        print(f"  [API 오류] {e}")
-
-    # 2차 Fallback: 직접 웹 크롤링
     base = "https://www.korea.kr"
+
     for t in PRESS_TARGETS:
         if not t.get("enabled", True): continue
         rep_code = t.get("rep_code", "").strip()
@@ -1755,10 +1807,11 @@ def collect_press(history):
             for li in lt.find_all("li"):
                 a = li.find("a")
                 if not a: continue
-                m = re.search(r"newsId=(\\d+)", a.get("href", ""))
+                href = a.get("href", "")
+                m = re.search(r"newsId=(\\d+)", href)
                 if not m: continue
                 nid = m.group(1)
-                if nid in seen or nid in history: continue
+                if nid in seen or (not ignore_history and nid in history): continue
                 strong = a.find("strong")
                 title = strong.get_text(" ", strip=True) if strong else a.get_text(" ", strip=True)
                 title = " ".join(title.split()).split(" - ")[0].strip()
@@ -1766,6 +1819,7 @@ def collect_press(history):
                     continue
                 seen.add(nid)
                 date_str = now.strftime("%Y-%m-%d")
+                raw_d = ""
                 src_span = a.find("span", class_="source")
                 if src_span:
                     spans = src_span.find_all("span")
@@ -1774,9 +1828,15 @@ def collect_press(history):
                         try:
                             d = datetime.strptime(raw_d, "%Y-%m-%d")
                             date_str = f"{raw_d}({WEEKDAYS_KO[d.weekday()]})"
-                        except: pass
+                        except: date_str = raw_d
+                if not ignore_history and raw_d:
+                    today_str = now.strftime("%Y-%m-%d")
+                    if raw_d != today_str:
+                        if isinstance(history, set): history.add(nid)
+                        elif isinstance(history, list) and nid not in history: history.append(nid)
+                        continue
                 link = f"{base}/briefing/pressReleaseView.do?newsId={nid}"
-                msgs.append((nid, f"🆕 {t['name']} 신규 보도자료\\n🗓 {date_str}\\n📌 {title}\\n🔗 {link}"))
+                msgs.append((nid, f"🆕 {t['name']} 신규 보도자료 알림\\n🗓 일시 : {date_str}\\n📌 {title}\\n🔗 원문 보기: {link}"))
         except Exception: pass
     return msgs
 
@@ -2049,7 +2109,12 @@ async function syncConfigToCloud() {
     youtube_channels: state.youtubeChannels || [],
     press_targets: state.pressTargets || [],
     ai_newsletters: state.aiNewsletters || [],
-    qt: state.qt || { enabled: true, hour: 3, minute: 33 }
+    qt: state.qt || { enabled: true, hour: 5, minute: 0, senior_enabled: true },
+    quiet_hours: {
+      enabled:        (state.quietHours || {}).enabled !== undefined ? (state.quietHours || {}).enabled : true,
+      start_hour_kst: (state.quietHours || {}).start   !== undefined ? (state.quietHours || {}).start   : 6,
+      end_hour_kst:   (state.quietHours || {}).end     !== undefined ? (state.quietHours || {}).end     : 22
+    }
   };
 
   const url = 'https://telegram-alert-bot-80500727934.asia-northeast3.run.app?mode=UPDATE_CONFIG';
@@ -2177,6 +2242,20 @@ async function sendQTDirect() {
     } catch (err) {
       failCount++;
       console.error('QT Send network error:', err);
+    }
+  }
+
+  // 고학년 매일성경 2페이지: 브라우저 CORS/포트 제약이 있어 Cloud Run 봇(QT_SENIOR 모드)으로 발송
+  const srEl = document.getElementById('qtSeniorEnabled');
+  if (!srEl || srEl.checked) {
+    try {
+      const r = await fetch('https://telegram-alert-bot-80500727934.asia-northeast3.run.app?mode=QT_SENIOR');
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) successCount += (d.sent_count || d.sent || 2);
+      else failCount++;
+    } catch (err) {
+      console.error('QT senior cloud trigger error:', err);
+      failCount++;
     }
   }
 
