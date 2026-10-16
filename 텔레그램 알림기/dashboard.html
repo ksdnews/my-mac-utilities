@@ -2251,8 +2251,8 @@ async function sendQTDirect() {
     try {
       const r = await fetch('https://telegram-alert-bot-80500727934.asia-northeast3.run.app?mode=QT_SENIOR');
       const d = await r.json().catch(() => ({}));
-      if (r.ok) successCount += (d.sent_count || d.sent || 2);
-      else failCount++;
+      if (r.ok && Number(d.sent_count) > 0) successCount += Number(d.sent_count);
+      else { failCount++; alert('⚠️ 고학년 매일성경 발송 실패 또는 0건입니다. (서버 응답: ' + JSON.stringify(d) + ')\n\nGoogle Cloud 최신 버전 배포 여부를 확인해주세요.'); }
     } catch (err) {
       console.error('QT senior cloud trigger error:', err);
       failCount++;
